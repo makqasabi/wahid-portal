@@ -132,6 +132,12 @@ function UsersTab({
   const [teams, setTeams] = useState<Team[]>([]);
   const [entities, setEntities] = useState<Entity[]>([]);
 
+  // Delete-with-transfer modal state
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [deletePending, setDeletePending] = useState<{ ownedPending: number; supportPending: number } | null>(null);
+  const [deleteTransferToId, setDeleteTransferToId] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
@@ -195,13 +201,35 @@ function UsersTab({
     }
   };
 
-  const handleDeactivate = async (u: User) => {
+  const openDeleteModal = async (u: User) => {
+    setDeleteTarget(u);
+    setDeleteTransferToId('');
+    setDeletePending(null);
     try {
-      await usersApi.deactivate(u.id);
-      toast.success(t('admin.userDeactivated', { name: u.fullName }));
-      await fetchUsers();
+      const counts = await usersApi.pendingCount(u.id);
+      setDeletePending(counts);
     } catch {
-      toast.error(t('admin.failedDeactivate'));
+      setDeletePending({ ownedPending: 0, supportPending: 0 });
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    if ((deletePending?.ownedPending ?? 0) > 0 && !deleteTransferToId) {
+      toast.error(t('admin.transfereeRequired'));
+      return;
+    }
+    setDeleting(true);
+    try {
+      await usersApi.deactivate(deleteTarget.id, deleteTransferToId || undefined);
+      toast.success(t('admin.userDeactivated', { name: deleteTarget.fullName }));
+      setDeleteTarget(null);
+      await fetchUsers();
+    } catch (err: any) {
+      const msg = err?.response?.data?.error ?? t('admin.failedDeactivate');
+      toast.error(msg);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -292,7 +320,7 @@ function UsersTab({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => handleDeactivate(row)}
+                onClick={() => openDeleteModal(row)}
               >
                 <UserMinus className="h-3.5 w-3.5 text-red-500" />
               </Button>
@@ -415,6 +443,59 @@ function UsersTab({
                 {t('cancel')}
               </Button>
               <Button onClick={handleUpdateUser}>{t('admin.saveChanges')}</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete User Modal (with ticket transfer) */}
+      <Modal
+        open={!!deleteTarget}
+        onOpenChange={(open) => { if (!open && !deleting) { setDeleteTarget(null); setDeleteTransferToId(''); setDeletePending(null); } }}
+        title={t('admin.deleteUserTitle', { name: deleteTarget?.fullName ?? '' })}
+      >
+        {deleteTarget && (
+          <div className="space-y-4">
+            {deletePending === null ? (
+              <div className="text-sm text-gray-500">{t('admin.checkingPending')}</div>
+            ) : (
+              <>
+                <div className="text-sm text-gray-700 dark:text-gray-300">
+                  {t('admin.deleteUserSummary', {
+                    owned: deletePending.ownedPending,
+                    support: deletePending.supportPending,
+                  })}
+                </div>
+                {deletePending.ownedPending > 0 && (
+                  <Select
+                    label={t('admin.transferOwnedTo')}
+                    placeholder={t('admin.selectTransferee')}
+                    options={users
+                      .filter((u) => u.id !== deleteTarget.id && u.isActive && u.entityId === deleteTarget.entityId)
+                      .map((u) => ({ value: u.id, label: `${u.fullName} (${u.email})` }))}
+                    value={deleteTransferToId}
+                    onChange={(e) => setDeleteTransferToId(e.target.value)}
+                  />
+                )}
+                {deletePending.supportPending > 0 && (
+                  <div className="text-xs text-gray-500">
+                    {t('admin.supportClearedNote', { count: deletePending.supportPending })}
+                  </div>
+                )}
+              </>
+            )}
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => { setDeleteTarget(null); setDeleteTransferToId(''); setDeletePending(null); }} disabled={deleting}>
+                {t('cancel')}
+              </Button>
+              <Button
+                variant="danger"
+                loading={deleting}
+                disabled={deletePending === null}
+                onClick={handleConfirmDelete}
+              >
+                {t('delete')}
+              </Button>
             </div>
           </div>
         )}

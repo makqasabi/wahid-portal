@@ -165,8 +165,11 @@ export const usersApi = {
   update: (id: string, data: Partial<User>) =>
     api.patch<User>(`/users/${id}`, data).then((r) => r.data),
 
-  deactivate: (id: string) =>
-    api.post(`/users/${id}/deactivate`, {}).then((r) => r.data),
+  deactivate: (id: string, transferToId?: string) =>
+    api.post(`/users/${id}/deactivate`, transferToId ? { transferToId } : {}).then((r) => r.data),
+
+  pendingCount: (id: string) =>
+    api.get<{ ownedPending: number; supportPending: number }>(`/users/${id}/pending-count`).then((r) => r.data),
 };
 
 // --- Admin ---

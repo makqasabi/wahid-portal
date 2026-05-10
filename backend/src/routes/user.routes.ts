@@ -266,7 +266,43 @@ router.patch(
   },
 );
 
-// ── POST /:id/deactivate — Deactivate user ─────────────────
+// ── GET /:id/pending-count — Count of pending owned tickets ──
+
+router.get(
+  "/:id/pending-count",
+  requireMinRole("ENTITY_ADMIN"),
+  async (req: ScopedRequest, res: Response) => {
+    try {
+      const targetId = req.params.id;
+      const target = await prisma.user.findUnique({
+        where: { id: targetId },
+        select: { entityId: true },
+      });
+      if (!target) {
+        res.status(404).json({ error: "User not found" });
+        return;
+      }
+      if (req.user!.role === "ENTITY_ADMIN" && target.entityId !== req.user!.entityId) {
+        res.status(403).json({ error: "Cannot view users outside your entity" });
+        return;
+      }
+
+      const ownedPending = await prisma.ticket.count({
+        where: { ownerId: targetId, progress: { not: "COMPLETED" } },
+      });
+      const supportPending = await prisma.ticket.count({
+        where: { supportId: targetId, progress: { not: "COMPLETED" } },
+      });
+
+      res.json({ ownedPending, supportPending });
+    } catch (err) {
+      console.error("GET /users/:id/pending-count error:", err);
+      res.status(500).json({ error: "Failed to fetch pending count" });
+    }
+  },
+);
+
+// ── POST /:id/deactivate — Deactivate user (with ticket transfer) ──
 
 router.post(
   "/:id/deactivate",
@@ -275,16 +311,18 @@ router.post(
     try {
       const userRole = req.user!.role;
       const userEntityId = req.user!.entityId;
+      const actorId = req.user!.id;
       const targetId = req.params.id;
+      const transferToId: string | undefined = req.body?.transferToId;
 
-      if (targetId === req.user!.id) {
+      if (targetId === actorId) {
         res.status(400).json({ error: "Cannot deactivate your own account" });
         return;
       }
 
       const target = await prisma.user.findUnique({
         where: { id: targetId },
-        select: { id: true, entityId: true },
+        select: { id: true, entityId: true, role: true, fullName: true },
       });
 
       if (!target) {
@@ -297,22 +335,101 @@ router.post(
         return;
       }
 
-      // Entity admin cannot deactivate super admins
-      const targetFull = await prisma.user.findUnique({
-        where: { id: targetId },
-        select: { role: true },
-      });
-      if (userRole === "ENTITY_ADMIN" && targetFull?.role === "SUPER_ADMIN") {
+      if (userRole === "ENTITY_ADMIN" && target.role === "SUPER_ADMIN") {
         res.status(403).json({ error: "Cannot deactivate a super admin" });
         return;
       }
 
-      await prisma.user.update({
-        where: { id: targetId },
-        data: { isActive: false },
+      // Find pending tickets where target is owner or support
+      const ownedPending = await prisma.ticket.findMany({
+        where: { ownerId: targetId, progress: { not: "COMPLETED" } },
+        select: { id: true, displayId: true },
+      });
+      const supportPending = await prisma.ticket.findMany({
+        where: { supportId: targetId, progress: { not: "COMPLETED" } },
+        select: { id: true, displayId: true },
       });
 
-      res.json({ message: "User deactivated successfully" });
+      // Owner reassignment requires a transferee — supportId can be safely nulled
+      if (ownedPending.length > 0 && !transferToId) {
+        res.status(409).json({
+          error: "User owns pending tickets — provide transferToId",
+          requiresTransfer: true,
+          ownedPending: ownedPending.length,
+          supportPending: supportPending.length,
+        });
+        return;
+      }
+
+      // Validate transferee if provided
+      if (transferToId) {
+        if (transferToId === targetId) {
+          res.status(400).json({ error: "Transferee cannot be the user being deactivated" });
+          return;
+        }
+        const transferee = await prisma.user.findUnique({
+          where: { id: transferToId },
+          select: { id: true, entityId: true, isActive: true },
+        });
+        if (!transferee) {
+          res.status(400).json({ error: "Transferee not found" });
+          return;
+        }
+        if (!transferee.isActive) {
+          res.status(400).json({ error: "Transferee is not active" });
+          return;
+        }
+        if (transferee.entityId !== target.entityId) {
+          res.status(400).json({ error: "Transferee must be in the same entity as the user being deactivated" });
+          return;
+        }
+      }
+
+      // Run reassignment + deactivation in a transaction
+      await prisma.$transaction(async (tx) => {
+        if (ownedPending.length > 0 && transferToId) {
+          await tx.ticket.updateMany({
+            where: { id: { in: ownedPending.map((t) => t.id) } },
+            data: { ownerId: transferToId },
+          });
+          await tx.auditLog.createMany({
+            data: ownedPending.map((t) => ({
+              ticketId: t.id,
+              userId: actorId,
+              action: "OWNER_TRANSFERRED",
+              fieldName: "ownerId",
+              oldValue: targetId,
+              newValue: transferToId,
+            })),
+          });
+        }
+        if (supportPending.length > 0) {
+          // Null out support — it's optional and a transferee replacement is too presumptuous
+          await tx.ticket.updateMany({
+            where: { id: { in: supportPending.map((t) => t.id) } },
+            data: { supportId: null },
+          });
+          await tx.auditLog.createMany({
+            data: supportPending.map((t) => ({
+              ticketId: t.id,
+              userId: actorId,
+              action: "SUPPORT_REMOVED",
+              fieldName: "supportId",
+              oldValue: targetId,
+            })),
+          });
+        }
+        await tx.user.update({
+          where: { id: targetId },
+          data: { isActive: false },
+        });
+      });
+
+      res.json({
+        message: "User deactivated successfully",
+        reassignedOwned: ownedPending.length,
+        clearedSupport: supportPending.length,
+      });
     } catch (err) {
       console.error("POST /users/:id/deactivate error:", err);
       res.status(500).json({ error: "Failed to deactivate user" });
