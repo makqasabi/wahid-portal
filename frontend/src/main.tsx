@@ -17,8 +17,10 @@ bindTokenAccessors(
   (token) => useAuthStore.setState({ token, isAuthenticated: !!token }),
 );
 
-// On page load, attempt silent refresh via httpOnly cookie
-useAuthStore.getState().refreshToken();
+// On page load, attempt silent refresh via httpOnly cookie (only if not on login page)
+if (!window.location.pathname.startsWith('/login')) {
+  useAuthStore.getState().refreshToken();
+}
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
