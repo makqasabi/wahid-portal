@@ -128,7 +128,9 @@ router.post(
         return;
       }
 
-      const client = await prisma.client.create({ data: { name, aliases } });
+      const client = await prisma.client.create({
+        data: { name, aliases: JSON.stringify(aliases) },
+      });
       res.status(201).json(client);
     } catch (err) {
       console.error("POST /admin/clients error:", err);
@@ -149,9 +151,12 @@ router.patch(
         return;
       }
 
+      const data = { ...req.body };
+      if (Array.isArray(data.aliases)) data.aliases = JSON.stringify(data.aliases);
+
       const updated = await prisma.client.update({
         where: { id: req.params.id },
-        data: req.body,
+        data,
       });
       res.json(updated);
     } catch (err) {
