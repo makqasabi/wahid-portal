@@ -1,6 +1,7 @@
 import prisma from "../config/prisma.js";
 import type { NotificationType } from "@prisma/client";
 import { sendNotificationEmail } from "./mail.service.js";
+import { publish, type BroadcastNotification } from "./notification.bus.js";
 
 function emailSubject(type: NotificationType, displayId: string): string {
   switch (type) {
@@ -67,6 +68,7 @@ async function sendForNotification(
 
 /**
  * Create a single notification record (and fire an email if SMTP is configured).
+ * Also publishes to the in-process bus so any SSE subscriber gets it instantly.
  */
 export async function createNotification(
   userId: string,
@@ -76,12 +78,36 @@ export async function createNotification(
 ): Promise<void> {
   try {
     const sent = await sendForNotification(userId, ticketId, type, message);
-    await prisma.notification.create({
+    const created = await prisma.notification.create({
       data: { userId, ticketId, type, message, sentEmail: sent },
+      include: { ticket: { select: { displayId: true } } },
     });
+    publish(toBroadcast(created));
   } catch (err) {
     console.error("Failed to create notification:", err);
   }
+}
+
+function toBroadcast(n: {
+  id: string;
+  userId: string;
+  ticketId: string;
+  type: string;
+  message: string;
+  isRead: boolean;
+  createdAt: Date;
+  ticket: { displayId: string };
+}): BroadcastNotification {
+  return {
+    id: n.id,
+    userId: n.userId,
+    ticketId: n.ticketId,
+    ticketDisplayId: n.ticket.displayId,
+    type: n.type,
+    message: n.message,
+    isRead: n.isRead,
+    createdAt: n.createdAt.toISOString(),
+  };
 }
 
 /**
@@ -126,20 +152,35 @@ export async function notifyTicketParticipants(
 
     if (targets.length === 0) return;
 
-    // Send emails in parallel, then write notification rows
+    // Send emails in parallel, write rows, then publish each to the bus
     const sendResults = await Promise.all(
       targets.map((uid) => sendForNotification(uid, ticketId, type, message)),
     );
 
-    await prisma.notification.createMany({
-      data: targets.map((userId, i) => ({
-        userId,
-        ticketId,
-        type,
-        message,
-        sentEmail: sendResults[i] ?? false,
-      })),
+    const ticketRow = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: { displayId: true },
     });
+    const displayId = ticketRow?.displayId ?? ticketId;
+
+    // createMany doesn't return rows in Postgres-compatible Prisma, so create individually
+    for (let i = 0; i < targets.length; i++) {
+      const userId = targets[i]!;
+      const created = await prisma.notification.create({
+        data: { userId, ticketId, type, message, sentEmail: sendResults[i] ?? false },
+        select: { id: true, userId: true, ticketId: true, type: true, message: true, isRead: true, createdAt: true },
+      });
+      publish({
+        id: created.id,
+        userId: created.userId,
+        ticketId: created.ticketId,
+        ticketDisplayId: displayId,
+        type: created.type,
+        message: created.message,
+        isRead: created.isRead,
+        createdAt: created.createdAt.toISOString(),
+      });
+    }
   } catch (err) {
     console.error("Failed to notify ticket participants:", err);
   }

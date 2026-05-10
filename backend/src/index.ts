@@ -17,6 +17,7 @@ import dashboardRoutes from "./routes/dashboard.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
 import exportRoutes from "./routes/export.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
+import { notificationStreamHandler } from "./routes/notificationStream.js";
 import attachmentRoutes from "./routes/attachment.routes.js";
 
 // ── Express app ──────────────────────────────────────────────
@@ -41,6 +42,9 @@ app.get("/api/health", (_req, res) => {
 // ── Public routes (no auth) ─────────────────────────────────
 app.use("/api/auth", authRoutes);
 app.use("/api/shared", sharedRoutes);
+
+// SSE stream — handles its own auth via query token (EventSource can't set headers)
+app.get("/api/notifications/stream", notificationStreamHandler);
 
 // ── Protected routes ────────────────────────────────────────
 app.use("/api", authenticateToken, entityScopeMiddleware);
