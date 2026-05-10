@@ -11,10 +11,9 @@ RUN npm ci --ignore-scripts
 COPY backend/prisma ./prisma
 RUN npx prisma generate
 
-# Copy source and compile TypeScript
+# Copy source — use tsx for runtime (skip tsc compilation)
 COPY backend/src ./src
 COPY backend/tsconfig.json ./
-RUN npx tsc
 
 # ── Stage 2: Production runtime ────────────────────────────
 FROM node:20-alpine
@@ -23,11 +22,12 @@ RUN apk add --no-cache tini
 
 WORKDIR /app
 
-# Copy only production node_modules + generated Prisma client
+# Copy only production node_modules + generated Prisma client + source
 COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
+COPY --from=build /app/src ./src
 COPY --from=build /app/package.json ./
 COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/tsconfig.json ./
 
 # Create uploads directory
 RUN mkdir -p /app/uploads && chown -R node:node /app
@@ -38,4 +38,4 @@ EXPOSE 3001
 
 # Run migrations then start the server
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && npx tsx src/index.ts"]
