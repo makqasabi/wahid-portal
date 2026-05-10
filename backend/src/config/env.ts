@@ -24,6 +24,8 @@ export const config = {
   SMTP_PORT: parseInt(optional("SMTP_PORT", "587"), 10),
   SMTP_USER: optional("SMTP_USER", ""),
   SMTP_PASS: optional("SMTP_PASS", ""),
+  SMTP_FROM: optional("SMTP_FROM", ""),
+  SMTP_REPLY_TO: optional("SMTP_REPLY_TO", ""),
   FRONTEND_URL: optional("FRONTEND_URL", "http://localhost:5173"),
   UPLOAD_DIR: optional("UPLOAD_DIR", "./uploads"),
 } as const;
