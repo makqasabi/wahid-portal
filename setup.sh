@@ -2,7 +2,7 @@
 set -e
 echo "=== Wahid Portal Setup ==="
 
-cd /opt/wahid
+cd /opt/wahid/wahid-portal
 
 # 1. Environment
 echo "Creating .env..."
