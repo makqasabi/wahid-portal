@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import { prismaUnscoped } from "../config/prisma.js";
 
 const PREFIX = "WAH-";
 
@@ -6,11 +6,11 @@ const PREFIX = "WAH-";
  * Generates the next sequential display ID for a ticket.
  * Format: WAH-0001, WAH-0002, ...
  *
- * Queries the current max displayId, parses the numeric suffix,
- * increments it, and zero-pads to 4 digits.
+ * Uses the unscoped client so soft-deleted tickets still occupy their IDs —
+ * audit logs reference displayId and we don't want collisions.
  */
-export async function generateDisplayId(prisma: PrismaClient): Promise<string> {
-  const lastTicket = await prisma.ticket.findFirst({
+export async function generateDisplayId(): Promise<string> {
+  const lastTicket = await prismaUnscoped.ticket.findFirst({
     orderBy: { displayId: "desc" },
     select: { displayId: true },
   });

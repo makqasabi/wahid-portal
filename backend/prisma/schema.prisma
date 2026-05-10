@@ -118,6 +118,9 @@ model Ticket {
   priority           String   @default("MEDIUM")
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
+
+  @@index([deletedAt])
 
   submittingTeam   Team     @relation("SubmittingTeam", fields: [submittingTeamId], references: [id])
   submittingEntity Entity   @relation("SubmittingEntity", fields: [submittingEntityId], references: [id])

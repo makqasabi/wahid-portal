@@ -117,6 +117,8 @@ export default function TicketDetailPage() {
   const [pendingTransition, setPendingTransition] = useState<StatusTransition | null>(null);
   const [transitioning, setTransitioning] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchTicket = useCallback(async () => {
     if (!id) return;
@@ -177,6 +179,21 @@ export default function TicketDetailPage() {
       setTransitioning(false);
       setConfirmModal(false);
       setPendingTransition(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!id) return;
+    setDeleting(true);
+    try {
+      await ticketsApi.delete(id);
+      toast.success(t('ticketDeleted'));
+      navigate('/tickets');
+    } catch (err: any) {
+      const msg = err?.response?.data?.error ?? t('failedDeleteTicket');
+      toast.error(msg);
+      setDeleting(false);
+      setDeleteConfirm(false);
     }
   };
 
@@ -310,6 +327,18 @@ export default function TicketDetailPage() {
           >
             <Edit2 className="h-4 w-4 me-1" />
             {t('edit')}
+          </Button>
+        )}
+
+        {isSuperAdmin && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setDeleteConfirm(true)}
+            className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+          >
+            <Trash2 className="h-4 w-4 me-1" />
+            {t('delete')}
           </Button>
         )}
 
@@ -643,6 +672,27 @@ export default function TicketDetailPage() {
           </Button>
           <Button loading={transitioning} onClick={handleStatusChange}>
             {t('confirm')}
+          </Button>
+        </div>
+      </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal
+        open={deleteConfirm}
+        onOpenChange={setDeleteConfirm}
+        title={t('confirmDeleteTicket')}
+        description={t('confirmDeleteTicketDesc', { id: ticket.displayId })}
+      >
+        <div className="flex justify-end gap-3 mt-4">
+          <Button variant="outline" onClick={() => setDeleteConfirm(false)} disabled={deleting}>
+            {t('cancel')}
+          </Button>
+          <Button
+            variant="danger"
+            loading={deleting}
+            onClick={handleDelete}
+          >
+            {t('delete')}
           </Button>
         </div>
       </Modal>

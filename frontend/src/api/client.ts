@@ -114,6 +114,9 @@ export const ticketsApi = {
 
   update: (id: string, data: Partial<Ticket>) =>
     api.patch<Ticket>(`/tickets/${id}`, data).then((r) => r.data),
+
+  delete: (id: string) =>
+    api.delete(`/tickets/${id}`).then((r) => r.data),
 };
 
 // --- Comments ---

@@ -13,7 +13,7 @@ export function scheduleSlaChecker(): void {
 
     try {
       // 1. Auto-delay overdue tickets
-      const delayed = await checkAndUpdateDelayed(prisma);
+      const delayed = await checkAndUpdateDelayed();
       console.log(`[SLA Checker] Marked ${delayed} tickets as DELAYED`);
 
       const now = new Date();

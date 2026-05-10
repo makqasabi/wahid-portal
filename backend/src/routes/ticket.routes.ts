@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Response } from "express";
 import prisma from "../config/prisma.js";
 import type { ScopedRequest } from "../middleware/entityScope.js";
+import { requireRole } from "../middleware/rbac.js";
 import { validateBody, validateQuery } from "../middleware/validate.js";
 import {
   createTicketSchema,
@@ -303,7 +304,7 @@ router.post("/", validateBody(createTicketSchema), async (req: ScopedRequest, re
       return;
     }
 
-    const displayId = await generateDisplayId(prisma);
+    const displayId = await generateDisplayId();
 
     // submittedById is ALWAYS the authenticated user — no impersonation possible
     const ticket = await prisma.ticket.create({
@@ -562,10 +563,41 @@ router.patch("/:id", validateBody(updateTicketSchema), async (req: ScopedRequest
   }
 });
 
-// ── DELETE /:id — Not allowed ───────────────────────────────
+// ── DELETE /:id — Soft delete (SUPER_ADMIN only) ────────────
 
-router.delete("/:id", (_req, res: Response) => {
-  res.status(405).json({ error: "Ticket deletion is not supported" });
+router.delete("/:id", requireRole("SUPER_ADMIN"), async (req: ScopedRequest, res: Response) => {
+  try {
+    const ticketId = req.params.id;
+    const userId = req.user!.id;
+
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: ticketId },
+      select: { id: true, displayId: true },
+    });
+    if (!ticket) {
+      res.status(404).json({ error: "Ticket not found" });
+      return;
+    }
+
+    await prisma.ticket.update({
+      where: { id: ticketId },
+      data: { deletedAt: new Date() },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        ticketId,
+        userId,
+        action: "TICKET_DELETED",
+        oldValue: ticket.displayId,
+      },
+    });
+
+    res.json({ message: "Ticket deleted", id: ticketId });
+  } catch (err) {
+    console.error("DELETE /tickets/:id error:", err);
+    res.status(500).json({ error: "Failed to delete ticket" });
+  }
 });
 
 export default router;

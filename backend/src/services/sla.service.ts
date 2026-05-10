@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import prisma from "../config/prisma.js";
 import { calcCalendarDays } from "../utils/businessDays.js";
 
 /**
@@ -19,7 +19,7 @@ export function calculateSlaVariance(
  * Find all tickets past their due date that are still IN_PROGRESS
  * and mark them as DELAYED. Creates audit log entries.
  */
-export async function checkAndUpdateDelayed(prisma: PrismaClient): Promise<number> {
+export async function checkAndUpdateDelayed(): Promise<number> {
   const now = new Date();
 
   const overdueTickets = await prisma.ticket.findMany({
