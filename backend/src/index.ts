@@ -21,11 +21,12 @@ import attachmentRoutes from "./routes/attachment.routes.js";
 
 // ── Express app ──────────────────────────────────────────────
 const app = express();
+app.set("trust proxy", 1);
 
 // ── Global middleware ────────────────────────────────────────
 app.use(helmet());
 app.use(cors({
-  origin: config.FRONTEND_URL,
+  origin: [config.FRONTEND_URL, "http://95.177.171.54", "https://wahid.live"],
   credentials: true,
 }));
 app.use(express.json({ limit: "10mb" }));
