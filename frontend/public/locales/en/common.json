@@ -1,0 +1,186 @@
+{
+  "appName": "Wahid Operations Portal",
+
+  "nav": {
+    "dashboard": "Dashboard",
+    "tickets": "Tickets",
+    "admin": "Admin",
+    "settings": "Settings",
+    "logout": "Logout",
+    "login": "Login",
+    "users": "Users",
+    "notifications": "Notifications",
+    "profile": "Profile"
+  },
+
+  "ticket": {
+    "actionItem": "Action Item",
+    "status": "Status",
+    "priority": "Priority",
+    "category": "Category",
+    "client": "Client",
+    "entity": "Entity",
+    "team": "Team",
+    "owner": "Owner",
+    "support": "Support",
+    "submittedBy": "Submitted By",
+    "submittingTeam": "Submitting Team",
+    "dueDate": "Due Date",
+    "closureDate": "Closure Date",
+    "createdAt": "Created At",
+    "updatedAt": "Updated At",
+    "displayId": "Ticket ID",
+    "slaVariance": "SLA Variance",
+    "attachments": "Attachments",
+    "auditLog": "Audit Log",
+    "ticketDetails": "Ticket Details",
+    "allTickets": "All Tickets",
+    "myTickets": "My Tickets",
+    "assignedToMe": "Assigned to Me",
+    "newTicket": "New Ticket"
+  },
+
+  "status": {
+    "IN_PROGRESS": "In Progress",
+    "DELAYED": "Delayed",
+    "COMPLETED": "Completed",
+    "ON_HOLD": "On Hold",
+    "DEPENDENT": "Dependent"
+  },
+
+  "priority": {
+    "CRITICAL": "Critical",
+    "HIGH": "High",
+    "MEDIUM": "Medium",
+    "LOW": "Low"
+  },
+
+  "action": {
+    "create": "Create",
+    "edit": "Edit",
+    "delete": "Delete",
+    "save": "Save",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "close": "Close",
+    "reopen": "Reopen",
+    "export": "Export",
+    "exportExcel": "Export to Excel",
+    "exportPdf": "Export to PDF",
+    "shareLink": "Share Link",
+    "apply": "Apply",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "update": "Update",
+    "search": "Search",
+    "filter": "Filter",
+    "clearFilters": "Clear Filters",
+    "uploadFile": "Upload File",
+    "sortBy": "Sort By",
+    "ascending": "Ascending",
+    "descending": "Descending",
+    "viewAll": "View All"
+  },
+
+  "dashboard": {
+    "title": "Dashboard",
+    "totalOpen": "Total Open",
+    "overdue": "Overdue",
+    "completedThisMonth": "Completed This Month",
+    "avgSlaVariance": "Avg SLA Variance",
+    "onTimeRate": "On-Time Rate",
+    "onHoldDependent": "On Hold + Dependent",
+    "entitySplit": "Entity Split",
+    "slaTrend": "SLA Trend",
+    "categoryBreakdown": "Category Breakdown",
+    "teamAccountability": "Team Accountability",
+    "agingReport": "Aging Report",
+    "days": "days"
+  },
+
+  "message": {
+    "success": "Operation completed successfully",
+    "error": "An error occurred. Please try again.",
+    "loading": "Loading...",
+    "noData": "No data available",
+    "noResults": "No results found",
+    "confirmDelete": "Are you sure you want to delete this item?",
+    "confirmClose": "Are you sure you want to close this ticket?",
+    "confirmReopen": "Are you sure you want to reopen this ticket?",
+    "savedSuccessfully": "Changes saved successfully",
+    "createdSuccessfully": "Created successfully",
+    "deletedSuccessfully": "Deleted successfully",
+    "sessionExpired": "Session expired. Please login again.",
+    "networkError": "Network error. Please check your connection.",
+    "unauthorized": "You are not authorized to perform this action.",
+    "page": "Page",
+    "of": "of",
+    "showing": "Showing",
+    "results": "results"
+  },
+
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "email": "Email",
+    "password": "Password",
+    "invalidCredentials": "Invalid email or password",
+    "welcomeBack": "Welcome Back",
+    "loginSubtitle": "Sign in to your account to continue",
+    "changePassword": "Change Password",
+    "oldPassword": "Old Password",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "forgotPassword": "Forgot Password?",
+    "rememberMe": "Remember Me"
+  },
+
+  "admin": {
+    "users": "Users",
+    "clients": "Clients",
+    "categories": "Categories",
+    "auditLog": "Audit Log",
+    "invite": "Invite User",
+    "deactivate": "Deactivate User",
+    "role": "Role",
+    "active": "Active",
+    "inactive": "Inactive",
+    "entities": "Entities",
+    "teams": "Teams"
+  },
+
+  "comments": {
+    "discussion": "Discussion",
+    "internalNotes": "Internal Notes",
+    "addComment": "Add Comment",
+    "addNote": "Add Internal Note",
+    "noComments": "No comments yet. Start the discussion.",
+    "noNotes": "No internal notes yet.",
+    "postComment": "Post Comment",
+    "internalWarning": "Internal notes are only visible to {{entity}} team members.",
+    "placeholder": "Write a comment...",
+    "notePlaceholder": "Write an internal note..."
+  },
+
+  "settings": {
+    "darkMode": "Dark Mode",
+    "lightMode": "Light Mode",
+    "language": "Language",
+    "english": "English",
+    "arabic": "Arabic"
+  },
+
+  "notification": {
+    "title": "Notifications",
+    "markAllRead": "Mark All as Read",
+    "noNotifications": "No new notifications",
+    "slaWarning": "SLA Warning",
+    "slaOverdue": "SLA Overdue",
+    "escalation": "Escalation",
+    "assigned": "Assigned",
+    "statusChanged": "Status Changed",
+    "commentAdded": "Comment Added"
+  }
+}

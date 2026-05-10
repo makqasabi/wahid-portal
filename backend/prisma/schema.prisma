@@ -1,0 +1,224 @@
+// ─────────────────────────────────────────────────────────────
+// Wahid Operations Portal  –  Prisma Schema
+// ─────────────────────────────────────────────────────────────
+// NOTE: Using SQLite for local dev. Switch provider to
+// "postgresql" and restore @db.Uuid / @db.Text annotations
+// for production deployment.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ── Models ───────────────────────────────────────────────────
+
+model Entity {
+  id                String   @id @default(uuid())
+  name              String   @unique
+  nameEn            String?
+  fullName          String
+  logoUrl           String?
+  slaWarningDays    Int      @default(3)
+  slaEscalationDays Int      @default(7)
+  workWeekDays      String   @default("0,1,2,3,4")
+  createdAt         DateTime @default(now())
+
+  teams            Team[]
+  users            User[]
+  ownedTickets     Ticket[]  @relation("OwnerEntity")
+  submittedTickets Ticket[]  @relation("SubmittingEntity")
+  comments         Comment[]
+}
+
+model Team {
+  id       String  @id @default(uuid())
+  name     String
+  nameEn   String?
+  entityId String
+
+  entity           Entity   @relation(fields: [entityId], references: [id])
+  users            User[]
+  submittedTickets Ticket[] @relation("SubmittingTeam")
+  ownedTickets     Ticket[] @relation("OwnerTeam")
+
+  @@unique([name, entityId])
+}
+
+model User {
+  id                  String    @id @default(uuid())
+  fullName            String
+  email               String    @unique
+  passwordHash        String
+  entityId            String
+  teamId              String
+  role                String    @default("MEMBER")
+  isActive            Boolean   @default(true)
+  mfaSecret           String?
+  mfaEnabled          Boolean   @default(false)
+  tokenVersion        Int       @default(0)
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  mustChangePassword  Boolean   @default(true)
+  lastLogin           DateTime?
+  createdAt           DateTime  @default(now())
+  authProvider        String    @default("local")
+
+  entity           Entity         @relation(fields: [entityId], references: [id])
+  team             Team           @relation(fields: [teamId], references: [id])
+  submittedTickets Ticket[]       @relation("SubmittedBy")
+  ownedTickets     Ticket[]       @relation("Owner")
+  supportedTickets Ticket[]       @relation("Support")
+  comments         Comment[]
+  auditLogs        AuditLog[]
+  notifications    Notification[]
+  attachments      Attachment[]
+  passwordResets   PasswordResetToken[]
+}
+
+model Client {
+  id       String  @id @default(uuid())
+  name     String  @unique
+  nameEn   String?
+  aliases  String  @default("[]")
+  isActive Boolean @default(true)
+
+  tickets Ticket[]
+}
+
+model Category {
+  id       String  @id @default(uuid())
+  name     String  @unique
+  nameEn   String?
+  isActive Boolean @default(true)
+
+  tickets Ticket[]
+}
+
+model Ticket {
+  id                 String   @id @default(uuid())
+  displayId          String   @unique
+  submittingTeamId   String
+  submittingEntityId String
+  categoryId         String
+  clientId           String
+  submittedById      String
+  actionItem         String
+  ownerId            String
+  supportId          String?
+  dueDate            DateTime?
+  closureDate        DateTime?
+  slaVarianceDays    Int?
+  ownerEntityId      String
+  progress           String   @default("IN_PROGRESS")
+  ownerTeamId        String
+  priority           String   @default("MEDIUM")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  submittingTeam   Team     @relation("SubmittingTeam", fields: [submittingTeamId], references: [id])
+  submittingEntity Entity   @relation("SubmittingEntity", fields: [submittingEntityId], references: [id])
+  category         Category @relation(fields: [categoryId], references: [id])
+  client           Client   @relation(fields: [clientId], references: [id])
+  submittedBy      User     @relation("SubmittedBy", fields: [submittedById], references: [id])
+  owner            User     @relation("Owner", fields: [ownerId], references: [id])
+  support          User?    @relation("Support", fields: [supportId], references: [id])
+  ownerEntity      Entity   @relation("OwnerEntity", fields: [ownerEntityId], references: [id])
+  ownerTeam        Team     @relation("OwnerTeam", fields: [ownerTeamId], references: [id])
+
+  comments      Comment[]
+  attachments   Attachment[]
+  auditLogs     AuditLog[]
+  notifications Notification[]
+}
+
+model Comment {
+  id             String   @id @default(uuid())
+  ticketId       String
+  authorId       String
+  body           String
+  isInternal     Boolean  @default(false)
+  authorEntityId String
+  createdAt      DateTime @default(now())
+
+  ticket       Ticket @relation(fields: [ticketId], references: [id])
+  author       User   @relation(fields: [authorId], references: [id])
+  authorEntity Entity @relation(fields: [authorEntityId], references: [id])
+}
+
+model Attachment {
+  id         String   @id @default(uuid())
+  ticketId   String
+  uploaderId String
+  fileName   String
+  filePath   String
+  fileSize   Int
+  mimeType   String
+  createdAt  DateTime @default(now())
+
+  ticket   Ticket @relation(fields: [ticketId], references: [id])
+  uploader User   @relation(fields: [uploaderId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  ticketId  String
+  userId    String
+  action    String
+  fieldName String?
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  ticketId  String
+  type      String
+  message   String
+  isRead    Boolean  @default(false)
+  sentEmail Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id])
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+}
+
+model LoginAttempt {
+  id        String   @id @default(uuid())
+  email     String
+  success   Boolean
+  ipAddress String?
+  userAgent String?
+  reason    String?
+  createdAt DateTime @default(now())
+}
+
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model ShareLink {
+  id          String   @id @default(uuid())
+  createdById String
+  token       String   @unique
+  filters     String
+  expiresAt   DateTime
+  maxViews    Int?
+  viewCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+}

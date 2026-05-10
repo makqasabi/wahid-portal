@@ -1,0 +1,186 @@
+{
+  "appName": "بوابة عمليات تعاونية - مينا",
+
+  "nav": {
+    "dashboard": "لوحة المعلومات",
+    "tickets": "التذاكر",
+    "admin": "الإدارة",
+    "settings": "الإعدادات",
+    "logout": "تسجيل الخروج",
+    "login": "تسجيل الدخول",
+    "users": "المستخدمون",
+    "notifications": "الإشعارات",
+    "profile": "الملف الشخصي"
+  },
+
+  "ticket": {
+    "actionItem": "بند العمل",
+    "status": "الحالة",
+    "priority": "الأولوية",
+    "category": "الفئة",
+    "client": "العميل",
+    "entity": "الجهة",
+    "team": "الفريق",
+    "owner": "المسؤول",
+    "support": "الدعم",
+    "submittedBy": "مقدم من",
+    "submittingTeam": "الفريق المقدم",
+    "dueDate": "تاريخ الاستحقاق",
+    "closureDate": "تاريخ الإغلاق",
+    "createdAt": "تاريخ الإنشاء",
+    "updatedAt": "تاريخ التحديث",
+    "displayId": "رقم التذكرة",
+    "slaVariance": "تباين اتفاقية مستوى الخدمة",
+    "attachments": "المرفقات",
+    "auditLog": "سجل التدقيق",
+    "ticketDetails": "تفاصيل التذكرة",
+    "allTickets": "جميع التذاكر",
+    "myTickets": "تذاكري",
+    "assignedToMe": "المسندة إلي",
+    "newTicket": "تذكرة جديدة"
+  },
+
+  "status": {
+    "IN_PROGRESS": "قيد التنفيذ",
+    "DELAYED": "متأخر",
+    "COMPLETED": "مكتمل",
+    "ON_HOLD": "قيد الانتظار",
+    "DEPENDENT": "معلق على آخر"
+  },
+
+  "priority": {
+    "CRITICAL": "حرج",
+    "HIGH": "عالي",
+    "MEDIUM": "متوسط",
+    "LOW": "منخفض"
+  },
+
+  "action": {
+    "create": "إنشاء",
+    "edit": "تعديل",
+    "delete": "حذف",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "submit": "إرسال",
+    "close": "إغلاق",
+    "reopen": "إعادة فتح",
+    "export": "تصدير",
+    "exportExcel": "تصدير إلى إكسل",
+    "exportPdf": "تصدير إلى PDF",
+    "shareLink": "رابط المشاركة",
+    "apply": "تطبيق",
+    "confirm": "تأكيد",
+    "back": "رجوع",
+    "next": "التالي",
+    "previous": "السابق",
+    "update": "تحديث",
+    "search": "بحث",
+    "filter": "تصفية",
+    "clearFilters": "مسح التصفيات",
+    "uploadFile": "رفع ملف",
+    "sortBy": "ترتيب حسب",
+    "ascending": "تصاعدي",
+    "descending": "تنازلي",
+    "viewAll": "عرض الكل"
+  },
+
+  "dashboard": {
+    "title": "لوحة المعلومات",
+    "totalOpen": "إجمالي المفتوحة",
+    "overdue": "متأخرة",
+    "completedThisMonth": "المكتملة هذا الشهر",
+    "avgSlaVariance": "متوسط تباين الاتفاقية",
+    "onTimeRate": "معدل الالتزام بالوقت",
+    "onHoldDependent": "قيد الانتظار + معلق",
+    "entitySplit": "توزيع الجهات",
+    "slaTrend": "اتجاه الاتفاقية",
+    "categoryBreakdown": "توزيع الفئات",
+    "teamAccountability": "مساءلة الفرق",
+    "agingReport": "تقرير التقادم",
+    "days": "أيام"
+  },
+
+  "message": {
+    "success": "تمت العملية بنجاح",
+    "error": "حدث خطأ. يرجى المحاولة مرة أخرى.",
+    "loading": "جاري التحميل...",
+    "noData": "لا توجد بيانات",
+    "noResults": "لا توجد نتائج",
+    "confirmDelete": "هل أنت متأكد من حذف هذا العنصر؟",
+    "confirmClose": "هل أنت متأكد من إغلاق هذه التذكرة؟",
+    "confirmReopen": "هل أنت متأكد من إعادة فتح هذه التذكرة؟",
+    "savedSuccessfully": "تم حفظ التغييرات بنجاح",
+    "createdSuccessfully": "تم الإنشاء بنجاح",
+    "deletedSuccessfully": "تم الحذف بنجاح",
+    "sessionExpired": "انتهت الجلسة. الرجاء تسجيل الدخول مرة أخرى.",
+    "networkError": "خطأ في الشبكة. يرجى التحقق من الاتصال.",
+    "unauthorized": "ليس لديك صلاحية لتنفيذ هذا الإجراء.",
+    "page": "صفحة",
+    "of": "من",
+    "showing": "عرض",
+    "results": "نتائج"
+  },
+
+  "auth": {
+    "login": "تسجيل الدخول",
+    "logout": "تسجيل الخروج",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "invalidCredentials": "بريد إلكتروني أو كلمة مرور غير صحيحة",
+    "welcomeBack": "مرحبا بعودتك",
+    "loginSubtitle": "سجل الدخول إلى حسابك للمتابعة",
+    "changePassword": "تغيير كلمة المرور",
+    "oldPassword": "كلمة المرور القديمة",
+    "newPassword": "كلمة المرور الجديدة",
+    "confirmPassword": "تأكيد كلمة المرور",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "rememberMe": "تذكرني"
+  },
+
+  "admin": {
+    "users": "المستخدمون",
+    "clients": "العملاء",
+    "categories": "الفئات",
+    "auditLog": "سجل التدقيق",
+    "invite": "دعوة مستخدم",
+    "deactivate": "تعطيل المستخدم",
+    "role": "الدور",
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "entities": "الجهات",
+    "teams": "الفرق"
+  },
+
+  "comments": {
+    "discussion": "المناقشة",
+    "internalNotes": "ملاحظات داخلية",
+    "addComment": "إضافة تعليق",
+    "addNote": "إضافة ملاحظة داخلية",
+    "noComments": "لا توجد تعليقات بعد. ابدأ المناقشة.",
+    "noNotes": "لا توجد ملاحظات داخلية بعد.",
+    "postComment": "نشر التعليق",
+    "internalWarning": "الملاحظات الداخلية مرئية فقط لأعضاء فريق {{entity}}.",
+    "placeholder": "اكتب تعليقا...",
+    "notePlaceholder": "اكتب ملاحظة داخلية..."
+  },
+
+  "settings": {
+    "darkMode": "الوضع الداكن",
+    "lightMode": "الوضع الفاتح",
+    "language": "اللغة",
+    "english": "الإنجليزية",
+    "arabic": "العربية"
+  },
+
+  "notification": {
+    "title": "الإشعارات",
+    "markAllRead": "تحديد الكل كمقروء",
+    "noNotifications": "لا توجد إشعارات جديدة",
+    "slaWarning": "تحذير اتفاقية مستوى الخدمة",
+    "slaOverdue": "تجاوز اتفاقية مستوى الخدمة",
+    "escalation": "تصعيد",
+    "assigned": "تم الإسناد",
+    "statusChanged": "تم تغيير الحالة",
+    "commentAdded": "تم إضافة تعليق"
+  }
+}
