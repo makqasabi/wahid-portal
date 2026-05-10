@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import type { Role } from '@/types';
 
@@ -13,28 +14,35 @@ const ROLE_HIERARCHY: Role[] = [
 export function useAuth() {
   const { user, isAuthenticated, login, logout } = useAuthStore();
 
-  const hasRole = (role: Role): boolean => {
-    return user?.role === role;
-  };
+  const hasRole = useCallback(
+    (role: Role): boolean => user?.role === role,
+    [user?.role],
+  );
 
-  const hasMinRole = (minRole: Role): boolean => {
-    if (!user) return false;
-    const userLevel = ROLE_HIERARCHY.indexOf(user.role);
-    const minLevel = ROLE_HIERARCHY.indexOf(minRole);
-    return userLevel >= minLevel;
-  };
+  const hasMinRole = useCallback(
+    (minRole: Role): boolean => {
+      if (!user) return false;
+      const userLevel = ROLE_HIERARCHY.indexOf(user.role);
+      const minLevel = ROLE_HIERARCHY.indexOf(minRole);
+      return userLevel >= minLevel;
+    },
+    [user],
+  );
 
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
   const isEntityAdmin = user?.role === 'ENTITY_ADMIN' || isSuperAdmin;
 
-  return {
-    user,
-    isAuthenticated,
-    login,
-    logout,
-    hasRole,
-    hasMinRole,
-    isEntityAdmin,
-    isSuperAdmin,
-  };
+  return useMemo(
+    () => ({
+      user,
+      isAuthenticated,
+      login,
+      logout,
+      hasRole,
+      hasMinRole,
+      isEntityAdmin,
+      isSuperAdmin,
+    }),
+    [user, isAuthenticated, login, logout, hasRole, hasMinRole, isEntityAdmin, isSuperAdmin],
+  );
 }
