@@ -310,7 +310,7 @@ router.get("/teams", async (req: ScopedRequest, res: Response) => {
   }
 });
 
-// ── Entities (SUPER_ADMIN only) ─────────────────────────────
+// ── Entities ───────────────────────────────────────────────
 
 router.get(
   "/entities",
@@ -319,11 +319,67 @@ router.get(
     try {
       const entities = await prisma.entity.findMany({
         orderBy: { name: "asc" },
+        include: {
+          escalationContact: { select: { id: true, fullName: true, email: true } },
+        },
       });
       res.json({ data: entities });
     } catch (err) {
       console.error("GET /admin/entities error:", err);
       res.status(500).json({ error: "Failed to fetch entities" });
+    }
+  },
+);
+
+const updateEntitySchema = z.object({
+  escalationContactId: z.string().uuid().nullable().optional(),
+  slaWarningDays: z.number().int().min(0).max(365).optional(),
+  slaEscalationDays: z.number().int().min(0).max(365).optional(),
+});
+
+router.patch(
+  "/entities/:id",
+  validateBody(updateEntitySchema),
+  async (req: ScopedRequest, res: Response) => {
+    try {
+      const entityId = req.params.id;
+      const { role: actorRole, entityId: actorEntityId } = req.user!;
+
+      // ENTITY_ADMIN can only patch their own entity; SUPER_ADMIN any
+      if (actorRole !== "SUPER_ADMIN" && actorEntityId !== entityId) {
+        res.status(403).json({ error: "Cannot edit other entities" });
+        return;
+      }
+
+      const entity = await prisma.entity.findUnique({ where: { id: entityId } });
+      if (!entity) {
+        res.status(404).json({ error: "Entity not found" });
+        return;
+      }
+
+      // Validate escalationContactId — must be an active user in this entity
+      if (req.body.escalationContactId) {
+        const contact = await prisma.user.findUnique({
+          where: { id: req.body.escalationContactId },
+          select: { entityId: true, isActive: true },
+        });
+        if (!contact || !contact.isActive || contact.entityId !== entityId) {
+          res.status(400).json({ error: "Escalation contact must be an active user in this entity" });
+          return;
+        }
+      }
+
+      const updated = await prisma.entity.update({
+        where: { id: entityId },
+        data: req.body,
+        include: {
+          escalationContact: { select: { id: true, fullName: true, email: true } },
+        },
+      });
+      res.json(updated);
+    } catch (err) {
+      console.error("PATCH /admin/entities/:id error:", err);
+      res.status(500).json({ error: "Failed to update entity" });
     }
   },
 );

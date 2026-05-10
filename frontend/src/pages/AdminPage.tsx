@@ -25,7 +25,7 @@ import { Spinner } from '@/components/ui/Spinner';
 import { cn, formatDateTime, localName } from '@/lib/utils';
 import type { User, Client, Category, AuditLog, Team, Entity, Role } from '@/types';
 
-type AdminTab = 'users' | 'clients' | 'categories' | 'audit';
+type AdminTab = 'users' | 'clients' | 'categories' | 'entities' | 'audit';
 
 const ROLE_KEYS: Record<string, string> = {
   SUPER_ADMIN: 'admin.roles.superAdmin',
@@ -59,6 +59,7 @@ export default function AdminPage() {
     { key: 'users', label: t('admin.tabs.users'), icon: <Users className="h-4 w-4" /> },
     { key: 'clients', label: t('admin.tabs.clients'), icon: <Building2 className="h-4 w-4" /> },
     { key: 'categories', label: t('admin.tabs.categories'), icon: <Tag className="h-4 w-4" /> },
+    ...(isSuperAdmin ? [{ key: 'entities' as const, label: t('admin.tabs.entities'), icon: <Building2 className="h-4 w-4" /> }] : []),
     { key: 'audit', label: t('admin.tabs.audit'), icon: <ScrollText className="h-4 w-4" /> },
   ];
 
@@ -96,6 +97,7 @@ export default function AdminPage() {
       )}
       {activeTab === 'clients' && <ClientsTab isSuperAdmin={!!isSuperAdmin} />}
       {activeTab === 'categories' && <CategoriesTab isSuperAdmin={!!isSuperAdmin} />}
+      {activeTab === 'entities' && <EntitiesTab />}
       {activeTab === 'audit' && <AuditLogTab />}
     </div>
   );
@@ -875,6 +877,141 @@ function CategoriesTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             </Button>
           </div>
         </div>
+      </Modal>
+    </Card>
+  );
+}
+
+/* ============================= Entities Tab ============================= */
+
+function EntitiesTab() {
+  const { t, i18n } = useTranslation();
+  const [entities, setEntities] = useState<Entity[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editEntity, setEditEntity] = useState<Entity | null>(null);
+  const [editForm, setEditForm] = useState<{ escalationContactId: string; slaWarningDays: string; slaEscalationDays: string }>({ escalationContactId: '', slaWarningDays: '', slaEscalationDays: '' });
+  const [saving, setSaving] = useState(false);
+
+  const fetchAll = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [ents, us] = await Promise.all([
+        adminApi.getEntities(),
+        usersApi.list().then((r) => r.data),
+      ]);
+      setEntities(ents);
+      setUsers(us);
+    } catch {
+      toast.error(t('admin.failedLoadEntities'));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  const openEdit = (e: Entity) => {
+    setEditEntity(e);
+    setEditForm({
+      escalationContactId: e.escalationContactId ?? '',
+      slaWarningDays: String(e.slaWarningDays),
+      slaEscalationDays: String(e.slaEscalationDays),
+    });
+  };
+
+  const handleSave = async () => {
+    if (!editEntity) return;
+    setSaving(true);
+    try {
+      await adminApi.updateEntity(editEntity.id, {
+        escalationContactId: editForm.escalationContactId || null,
+        slaWarningDays: Number(editForm.slaWarningDays),
+        slaEscalationDays: Number(editForm.slaEscalationDays),
+      });
+      toast.success(t('admin.entityUpdated'));
+      setEditEntity(null);
+      await fetchAll();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? t('admin.failedUpdateEntity'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const columns: Column<Entity>[] = [
+    { key: 'name', header: t('admin.columns.name'), render: (row: Entity) => localName(row, i18n.language) },
+    {
+      key: 'escalationContact',
+      header: t('admin.columns.escalationContact'),
+      render: (row: Entity) =>
+        row.escalationContact ? `${row.escalationContact.fullName} (${row.escalationContact.email})` : <span className="text-gray-400">—</span>,
+    },
+    { key: 'slaWarningDays', header: t('admin.columns.slaWarningDays') },
+    { key: 'slaEscalationDays', header: t('admin.columns.slaEscalationDays') },
+    {
+      key: 'actions',
+      header: '',
+      render: (row: Entity) => (
+        <Button variant="ghost" size="sm" onClick={() => openEdit(row)}>
+          <Edit2 className="h-3.5 w-3.5" />
+        </Button>
+      ),
+    },
+  ];
+
+  const transfereeOptions: SelectOption[] = editEntity
+    ? [
+        { value: '', label: t('admin.noEscalationContact') },
+        ...users
+          .filter((u) => u.isActive && u.entityId === editEntity.id)
+          .map((u) => ({ value: u.id, label: `${u.fullName} (${u.email})` })),
+      ]
+    : [];
+
+  return (
+    <Card title={t('admin.tabs.entities')}>
+      <DataTable
+        columns={columns}
+        data={entities as unknown as Record<string, unknown>[]}
+        loading={loading}
+        emptyMessage={t('admin.noEntities')}
+      />
+
+      <Modal
+        open={!!editEntity}
+        onOpenChange={(open) => { if (!open && !saving) setEditEntity(null); }}
+        title={editEntity ? t('admin.editEntity', { name: localName(editEntity, i18n.language) }) : ''}
+      >
+        {editEntity && (
+          <div className="space-y-4">
+            <Select
+              label={t('admin.escalationContact')}
+              options={transfereeOptions}
+              value={editForm.escalationContactId}
+              onChange={(e) => setEditForm((f) => ({ ...f, escalationContactId: e.target.value }))}
+            />
+            <p className="text-xs text-gray-500">{t('admin.escalationContactHelp')}</p>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label={t('admin.columns.slaWarningDays')}
+                type="number"
+                value={editForm.slaWarningDays}
+                onChange={(e) => setEditForm((f) => ({ ...f, slaWarningDays: e.target.value }))}
+              />
+              <Input
+                label={t('admin.columns.slaEscalationDays')}
+                type="number"
+                value={editForm.slaEscalationDays}
+                onChange={(e) => setEditForm((f) => ({ ...f, slaEscalationDays: e.target.value }))}
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => setEditEntity(null)} disabled={saving}>{t('cancel')}</Button>
+              <Button onClick={handleSave} loading={saving}>{t('admin.saveChanges')}</Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </Card>
   );

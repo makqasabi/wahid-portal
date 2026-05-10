@@ -30,6 +30,8 @@ export interface Entity {
   logoUrl?: string;
   slaWarningDays: number;
   slaEscalationDays: number;
+  escalationContactId?: string | null;
+  escalationContact?: { id: string; fullName: string; email: string } | null;
 }
 
 export interface Team {

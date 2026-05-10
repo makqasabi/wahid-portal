@@ -17,21 +17,23 @@ datasource db {
 // ── Models ───────────────────────────────────────────────────
 
 model Entity {
-  id                String   @id @default(uuid())
-  name              String   @unique
-  nameEn            String?
-  fullName          String
-  logoUrl           String?
-  slaWarningDays    Int      @default(3)
-  slaEscalationDays Int      @default(7)
-  workWeekDays      String   @default("0,1,2,3,4")
-  createdAt         DateTime @default(now())
+  id                  String   @id @default(uuid())
+  name                String   @unique
+  nameEn              String?
+  fullName            String
+  logoUrl             String?
+  slaWarningDays      Int      @default(3)
+  slaEscalationDays   Int      @default(7)
+  workWeekDays        String   @default("0,1,2,3,4")
+  escalationContactId String?
+  createdAt           DateTime @default(now())
 
-  teams            Team[]
-  users            User[]
-  ownedTickets     Ticket[]  @relation("OwnerEntity")
-  submittedTickets Ticket[]  @relation("SubmittingEntity")
-  comments         Comment[]
+  teams              Team[]
+  users              User[]
+  escalationContact  User?     @relation("EscalationContact", fields: [escalationContactId], references: [id])
+  ownedTickets       Ticket[]  @relation("OwnerEntity")
+  submittedTickets   Ticket[]  @relation("SubmittingEntity")
+  comments           Comment[]
 }
 
 model Team {
@@ -67,16 +69,17 @@ model User {
   createdAt           DateTime  @default(now())
   authProvider        String    @default("local")
 
-  entity           Entity         @relation(fields: [entityId], references: [id])
-  team             Team           @relation(fields: [teamId], references: [id])
-  submittedTickets Ticket[]       @relation("SubmittedBy")
-  ownedTickets     Ticket[]       @relation("Owner")
-  supportedTickets Ticket[]       @relation("Support")
-  comments         Comment[]
-  auditLogs        AuditLog[]
-  notifications    Notification[]
-  attachments      Attachment[]
-  passwordResets   PasswordResetToken[]
+  entity              Entity         @relation(fields: [entityId], references: [id])
+  team                Team           @relation(fields: [teamId], references: [id])
+  submittedTickets    Ticket[]       @relation("SubmittedBy")
+  ownedTickets        Ticket[]       @relation("Owner")
+  supportedTickets    Ticket[]       @relation("Support")
+  escalationContactOf Entity[]       @relation("EscalationContact")
+  comments            Comment[]
+  auditLogs           AuditLog[]
+  notifications       Notification[]
+  attachments         Attachment[]
+  passwordResets      PasswordResetToken[]
 }
 
 model Client {

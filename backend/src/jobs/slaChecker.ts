@@ -67,7 +67,7 @@ export function scheduleSlaChecker(): void {
 
       // 4. Escalation: tickets overdue beyond entity's escalation threshold
       const entities = await prisma.entity.findMany({
-        select: { id: true, name: true, slaEscalationDays: true },
+        select: { id: true, name: true, slaEscalationDays: true, escalationContactId: true },
       });
 
       let escalationCount = 0;
@@ -98,11 +98,17 @@ export function scheduleSlaChecker(): void {
           select: { id: true, teamId: true },
         });
 
+        // Optional management contact for the entity
+        const managementId = entity.escalationContactId;
+
         for (const t of escalationTickets) {
           const leads = teamLeads.filter((l) => l.teamId === t.ownerTeamId);
-          for (const lead of leads) {
+          const recipientIds = new Set<string>(leads.map((l) => l.id));
+          if (managementId) recipientIds.add(managementId);
+
+          for (const recipientId of recipientIds) {
             await createNotification(
-              lead.id,
+              recipientId,
               t.id,
               "ESCALATION",
               `Ticket ${t.displayId} has been overdue for more than ${entity.slaEscalationDays} days`,

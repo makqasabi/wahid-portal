@@ -189,6 +189,9 @@ export const adminApi = {
   getEntities: () =>
     api.get('/admin/entities').then((r) => r.data.data ?? r.data) as Promise<Entity[]>,
 
+  updateEntity: (id: string, data: { escalationContactId?: string | null; slaWarningDays?: number; slaEscalationDays?: number }) =>
+    api.patch<Entity>(`/admin/entities/${id}`, data).then((r) => r.data),
+
   createClient: (name: string) =>
     api.post<Client>('/admin/clients', { name }).then((r) => r.data),
 
