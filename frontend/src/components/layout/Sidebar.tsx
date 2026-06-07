@@ -308,9 +308,9 @@ export function Sidebar() {
       {/* Sidebar panel */}
       <aside
         className={cn(
-          'fixed inset-y-0 start-0 z-40 border-e border-gray-200 bg-white transition-all duration-200 lg:static lg:translate-x-0 dark:border-gray-700 dark:bg-gray-900',
+          'fixed inset-y-0 start-0 z-40 border-e border-gray-200 bg-white transition-all duration-200 lg:static lg:!translate-x-0 dark:border-gray-700 dark:bg-gray-900',
           collapsed ? 'w-16' : 'w-[250px]',
-          mobileOpen ? 'translate-x-0' : '-translate-x-full',
+          mobileOpen ? 'translate-x-0' : 'ltr:-translate-x-full rtl:translate-x-full',
         )}
       >
         {sidebarContent}

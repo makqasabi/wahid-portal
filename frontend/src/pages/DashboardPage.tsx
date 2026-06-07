@@ -70,9 +70,19 @@ export default function DashboardPage() {
   const [selectedEntity, setSelectedEntity] = useState('');
 
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 639px)').matches,
+  );
   const [entityTabs, setEntityTabs] = useState<{ value: string; label: string }[]>([
     { value: '', label: t('all') },
   ]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 639px)');
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [entitySplit, setEntitySplit] = useState<EntitySplitEntry[]>([]);
   const [slaTrend, setSlaTrend] = useState<SlaTrendEntry[]>([]);
@@ -285,13 +295,13 @@ export default function DashboardPage() {
         </h1>
 
         {isSuperAdmin ? (
-          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-gray-800">
+          <div className="inline-flex max-w-full overflow-x-auto rounded-lg border border-gray-200 bg-gray-50 p-0.5 dark:border-gray-700 dark:bg-gray-800">
             {entityTabs.map((tab) => (
               <button
                 key={tab.value}
                 onClick={() => setSelectedEntity(tab.value)}
                 className={cn(
-                  'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                  'shrink-0 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                   selectedEntity === tab.value
                     ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100'
                     : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
@@ -309,13 +319,17 @@ export default function DashboardPage() {
       </div>
 
       {/* Row 1: KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-6">
         {kpis.map((kpi) => (
-          <Card key={kpi.label} className="flex items-center gap-4">
-            <div className={cn('rounded-xl p-3', kpi.color)}>{kpi.icon}</div>
-            <div>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{kpi.value}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{kpi.label}</p>
+          <Card
+            key={kpi.label}
+            padding={false}
+            className="flex items-center gap-3 p-4 sm:gap-4"
+          >
+            <div className={cn('shrink-0 rounded-xl p-2.5 sm:p-3', kpi.color)}>{kpi.icon}</div>
+            <div className="min-w-0">
+              <p className="text-xl font-bold text-gray-900 sm:text-2xl dark:text-gray-100">{kpi.value}</p>
+              <p className="truncate text-xs text-gray-500 dark:text-gray-400">{kpi.label}</p>
             </div>
           </Card>
         ))}
@@ -380,8 +394,11 @@ export default function DashboardPage() {
               <YAxis
                 dataKey="category"
                 type="category"
-                width={280}
-                tick={{ fontSize: 12 }}
+                width={isMobile ? 96 : 280}
+                tick={{ fontSize: isMobile ? 10 : 12 }}
+                tickFormatter={(v: string) =>
+                  isMobile && v.length > 16 ? `${v.slice(0, 15)}…` : v
+                }
               />
               <Tooltip />
               <Legend />
@@ -411,11 +428,48 @@ export default function DashboardPage() {
       </Card>
 
       {/* Row 4: Team Accountability */}
-      <Card title={t('teamAccountability')}>
+      <Card title={t('teamAccountability')} padding={false}>
         <DataTable
           columns={teamColumns}
           data={teamData as unknown as Record<string, unknown>[]}
           emptyMessage={t('noTeamData')}
+          mobileCard={(row) => {
+            const tm = row as unknown as TeamEntry;
+            const cell = (label: string, value: React.ReactNode) => (
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-gray-400 dark:text-gray-500">{label}</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{value}</p>
+              </div>
+            );
+            return (
+              <div className="space-y-3">
+                <p className="font-medium text-gray-900 dark:text-gray-100">{tm.team}</p>
+                <div className="grid grid-cols-3 gap-3">
+                  {cell(t('open'), tm.open)}
+                  {cell(
+                    t('overdue'),
+                    <span className={tm.overdue > 0 ? 'text-red-600' : ''}>{tm.overdue}</span>,
+                  )}
+                  {cell(t('completed'), tm.completed)}
+                  {cell(t('avgSlaDays'), tm.avgSla.toFixed(1))}
+                  {cell(
+                    t('onTimePercent'),
+                    <span
+                      className={cn(
+                        tm.onTimeRate >= 80
+                          ? 'text-green-600'
+                          : tm.onTimeRate >= 60
+                            ? 'text-yellow-600'
+                            : 'text-red-600',
+                      )}
+                    >
+                      {tm.onTimeRate.toFixed(0)}%
+                    </span>,
+                  )}
+                </div>
+              </div>
+            );
+          }}
         />
       </Card>
     </div>

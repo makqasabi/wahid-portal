@@ -296,24 +296,29 @@ export default function TicketDetailPage() {
   return (
     <div className="space-y-4">
       {/* Top Bar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/tickets')}>
-          <ArrowLeft className="h-4 w-4 me-1" />
-          {t('back')}
-        </Button>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        {/* Left: identity + badges */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/tickets')}>
+            <ArrowLeft className="h-4 w-4 me-1" />
+            {t('back')}
+          </Button>
 
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{ticket.displayId}</h1>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{ticket.displayId}</h1>
 
-        <StatusBadge status={ticket.progress} />
-        <PriorityBadge priority={ticket.priority} />
-        <SlaBadge
-          slaVarianceDays={ticket.slaVarianceDays}
-          dueDate={ticket.dueDate}
-          progress={ticket.progress}
-        />
+          <StatusBadge status={ticket.progress} />
+          <PriorityBadge priority={ticket.priority} />
+          <SlaBadge
+            slaVarianceDays={ticket.slaVarianceDays}
+            dueDate={ticket.dueDate}
+            progress={ticket.progress}
+          />
+        </div>
 
-        <div className="flex-1" />
+        <div className="hidden flex-1 lg:block" />
 
+        {/* Right: actions */}
+        <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" onClick={handleExportPdf}>
           <Download className="h-4 w-4 me-1" />
           {t('pdf')}
@@ -356,6 +361,7 @@ export default function TicketDetailPage() {
             {t(tr.labelKey)}
           </Button>
         ))}
+        </div>
       </div>
 
       {/* Two-column layout */}
@@ -714,7 +720,7 @@ function DetailRow({
       <dt className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
         {label}
       </dt>
-      <dd className="text-gray-900 dark:text-gray-100">{children}</dd>
+      <dd className="break-words text-gray-900 dark:text-gray-100">{children}</dd>
     </div>
   );
 }

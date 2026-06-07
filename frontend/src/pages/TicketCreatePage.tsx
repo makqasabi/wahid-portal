@@ -285,10 +285,12 @@ export default function TicketCreatePage() {
               <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
                 {t('submittedBy')}
               </label>
-              <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
+              <div className="flex flex-col items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 sm:flex-row sm:items-center dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300">
                 <span className="font-medium">{user?.fullName}</span>
-                <Badge variant="info">{localName(user?.entity, i18n.language)}</Badge>
-                <Badge variant="default">{localName(user?.team, i18n.language)}</Badge>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="info">{localName(user?.entity, i18n.language)}</Badge>
+                  <Badge variant="default">{localName(user?.team, i18n.language)}</Badge>
+                </div>
               </div>
               <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
                 {t('ticketsSubmittedUnderYourAccount')}

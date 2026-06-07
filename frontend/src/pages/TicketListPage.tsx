@@ -221,13 +221,13 @@ export default function TicketListPage() {
       </div>
 
       {/* Quick filter tabs */}
-      <div data-tour="ticket-quick-filters" className="flex gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 w-fit dark:border-gray-700 dark:bg-gray-800">
+      <div data-tour="ticket-quick-filters" className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-lg border border-gray-200 bg-gray-50 p-1 dark:border-gray-700 dark:bg-gray-800">
         {quickTabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setQuickFilter(tab.key)}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+              'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
               current === tab.key
                 ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100'
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
@@ -253,6 +253,44 @@ export default function TicketListPage() {
           currentSort={filters.sortBy}
           currentDirection={filters.sortOrder}
           onRowClick={(row) => navigate(`/tickets/${(row as unknown as Ticket).id}`)}
+          mobileCard={(row) => {
+            const tk = row as unknown as Ticket;
+            return (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-twn-600">{tk.displayId}</span>
+                  <StatusBadge status={tk.progress} />
+                </div>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {truncate(tk.actionItem, 90)}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <PriorityBadge priority={tk.priority} />
+                  {tk.ownerEntity?.name && (
+                    <Badge variant={isMeenaEntity(tk.ownerEntity.name) ? 'warning' : 'info'}>
+                      {localName(tk.ownerEntity, i18n.language)}
+                    </Badge>
+                  )}
+                  <SlaBadge
+                    slaVarianceDays={tk.slaVarianceDays}
+                    dueDate={tk.dueDate}
+                    progress={tk.progress}
+                  />
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                  <span className="truncate">{localName(tk.client, i18n.language)}</span>
+                  <span className="truncate">{tk.owner?.fullName ?? '-'}</span>
+                  <span
+                    className={cn(
+                      isOverdue(tk.dueDate, tk.progress) && 'font-semibold text-red-600',
+                    )}
+                  >
+                    {tk.dueDate ? formatDate(tk.dueDate) : '-'}
+                  </span>
+                </div>
+              </div>
+            );
+          }}
         />
       </div>
 

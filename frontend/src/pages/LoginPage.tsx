@@ -160,7 +160,7 @@ export default function LoginPage() {
         </div>
 
         {/* Card */}
-        <div className="rounded-2xl border border-white/20 bg-white p-8 shadow-2xl dark:bg-gray-800 dark:border-gray-700">
+        <div className="rounded-2xl border border-white/20 bg-white p-6 shadow-2xl sm:p-8 dark:bg-gray-800 dark:border-gray-700">
 
           {/* ── Login View ── */}
           {view === 'login' && (

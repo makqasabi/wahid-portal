@@ -70,13 +70,13 @@ export default function AdminPage() {
       </h1>
 
       {/* Tabs */}
-      <div className="flex gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 w-fit dark:border-gray-700 dark:bg-gray-800">
+      <div className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-lg border border-gray-200 bg-gray-50 p-1 dark:border-gray-700 dark:bg-gray-800">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+              'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
               activeTab === tab.key
                 ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100'
                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
@@ -377,7 +377,7 @@ function UsersTab({
             value={inviteForm.password}
             onChange={(e) => setInviteForm((f) => ({ ...f, password: e.target.value }))}
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Select
               label={t('role')}
               options={allowedRoleOptions}
@@ -992,7 +992,7 @@ function EntitiesTab() {
               onChange={(e) => setEditForm((f) => ({ ...f, escalationContactId: e.target.value }))}
             />
             <p className="text-xs text-gray-500">{t('admin.escalationContactHelp')}</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Input
                 label={t('admin.columns.slaWarningDays')}
                 type="number"

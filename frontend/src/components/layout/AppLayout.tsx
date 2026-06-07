@@ -110,7 +110,7 @@ export function AppLayout() {
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header onOpenTour={openTour} />
-        <main data-tour="main-content" className="flex-1 overflow-y-auto p-6">
+        <main data-tour="main-content" className="flex-1 overflow-y-auto p-4 sm:p-6">
           <Outlet />
         </main>
       </div>

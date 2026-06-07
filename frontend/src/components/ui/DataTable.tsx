@@ -19,6 +19,11 @@ export interface DataTableProps<T> {
   currentSort?: string;
   currentDirection?: 'asc' | 'desc';
   onRowClick?: (row: T) => void;
+  /**
+   * Optional renderer for a single row as a card on phones. When provided, the
+   * table is hidden below `sm` and this card list is shown instead.
+   */
+  mobileCard?: (row: T) => ReactNode;
 }
 
 function SkeletonRow({ cols }: { cols: number }) {
@@ -42,6 +47,7 @@ export function DataTable<T extends Record<string, unknown>>({
   currentSort: externalSort,
   currentDirection: externalDirection,
   onRowClick,
+  mobileCard,
 }: DataTableProps<T>) {
   // Internal sort state for when no external onSort is provided
   const [internalSort, setInternalSort] = useState<string | undefined>();
@@ -79,7 +85,40 @@ export function DataTable<T extends Record<string, unknown>>({
   }, [data, currentSort, currentDirection, onSort]);
 
   return (
-    <div className="w-full overflow-x-auto">
+    <>
+      {/* Mobile card list */}
+      {mobileCard && (
+        <div className={cn('flex flex-col gap-3 p-3', 'sm:hidden')}>
+          {loading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-24 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-700"
+              />
+            ))
+          ) : sortedData.length === 0 ? (
+            <p className="px-4 py-12 text-center text-gray-500 dark:text-gray-400">
+              {emptyMessage}
+            </p>
+          ) : (
+            sortedData.map((row, rowIndex) => (
+              <div
+                key={(row.id as string) ?? rowIndex}
+                onClick={() => onRowClick?.(row)}
+                className={cn(
+                  'rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800',
+                  onRowClick && 'cursor-pointer active:bg-gray-50 dark:active:bg-gray-700',
+                )}
+              >
+                {mobileCard(row)}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+
+      {/* Desktop table */}
+      <div className={cn('w-full overflow-x-auto', mobileCard && 'hidden sm:block')}>
       <table className="w-full min-w-[640px] text-sm">
         <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900">
           <tr>
@@ -153,6 +192,7 @@ export function DataTable<T extends Record<string, unknown>>({
           <Spinner size="md" />
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }

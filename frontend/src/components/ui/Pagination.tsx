@@ -52,11 +52,11 @@ export function Pagination({
         <span className="font-medium">{total}</span>
       </p>
 
-      <div className="flex items-center gap-1">
+      <div className="flex max-w-full items-center gap-1 overflow-x-auto">
         <button
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          className="inline-flex items-center rounded-lg p-2 text-sm text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-700"
+          className="inline-flex shrink-0 items-center rounded-lg p-2 text-sm text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-700"
           aria-label="Previous page"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -72,7 +72,7 @@ export function Pagination({
               key={p}
               onClick={() => onPageChange(p)}
               className={cn(
-                'inline-flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium transition-colors',
+                'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-medium transition-colors',
                 p === page
                   ? 'bg-twn-600 text-white'
                   : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700',
@@ -86,7 +86,7 @@ export function Pagination({
         <button
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
-          className="inline-flex items-center rounded-lg p-2 text-sm text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-700"
+          className="inline-flex shrink-0 items-center rounded-lg p-2 text-sm text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-400 dark:hover:bg-gray-700"
           aria-label="Next page"
         >
           <ChevronRight className="h-4 w-4" />
