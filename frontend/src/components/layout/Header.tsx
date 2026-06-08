@@ -1,10 +1,8 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Search, Moon, Sun, Globe, User, HelpCircle } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
-import { useFilterStore } from '@/stores/filterStore';
+import { openCommandPalette } from '@/components/CommandPalette';
 import { NotificationBell } from './NotificationBell';
 
 export interface HeaderProps {
@@ -15,10 +13,7 @@ export interface HeaderProps {
 export function Header({ title, onOpenTour }: HeaderProps) {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const filterStore = useFilterStore();
   const { isDark, toggle: toggleTheme } = useTheme();
-  const [searchValue, setSearchValue] = useState('');
 
   const isArabic = i18n.language === 'ar';
 
@@ -45,25 +40,27 @@ export function Header({ title, onOpenTour }: HeaderProps) {
 
       {/* Right: actions */}
       <div className="flex items-center gap-1 sm:gap-1.5">
-        {/* Search */}
-        <div data-tour="search" className="relative hidden md:block">
-          <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            value={searchValue}
-            onChange={(e) => setSearchValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && searchValue.trim()) {
-                filterStore.clearFilters();
-                filterStore.setFilter('search', searchValue.trim());
-                navigate('/tickets');
-                setSearchValue('');
-              }
-            }}
-            placeholder={t('header.search') ?? 'Search...'}
-            className="h-9 w-48 rounded-lg border border-gray-200 bg-gray-50/80 ps-9 pe-3 text-sm text-gray-700 transition-all placeholder:text-gray-400 focus:w-64 focus:border-twn-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-twn-500/15 lg:w-56 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-200 dark:focus:bg-gray-900"
-          />
-        </div>
+        {/* Command palette launcher (desktop) */}
+        <button
+          data-tour="search"
+          onClick={openCommandPalette}
+          className="hidden h-9 w-56 items-center gap-2 rounded-lg border border-gray-200 bg-gray-50/80 ps-3 pe-2 text-sm text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 md:flex lg:w-64 dark:border-gray-700 dark:bg-gray-800/60 dark:hover:bg-gray-800"
+        >
+          <Search className="h-4 w-4 shrink-0" />
+          <span className="flex-1 text-start">{t('header.search') ?? 'Search...'}</span>
+          <kbd className="rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-900">
+            ⌘K
+          </kbd>
+        </button>
+
+        {/* Command palette launcher (mobile) */}
+        <button
+          onClick={openCommandPalette}
+          className={`${iconBtn} md:hidden`}
+          aria-label={t('cmd.title')}
+        >
+          <Search className="h-5 w-5" />
+        </button>
 
         {onOpenTour && (
           <button data-tour="help" onClick={onOpenTour} className={iconBtn} title={t('header.takeTour')}>

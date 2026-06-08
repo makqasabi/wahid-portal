@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { GuidedTour, useGuidedTour } from '@/components/ui/GuidedTour';
+import { CommandPalette } from '@/components/CommandPalette';
 
 export function AppLayout() {
   const { t } = useTranslation();
@@ -117,6 +118,7 @@ export function AppLayout() {
         </main>
       </div>
       <GuidedTour open={isTourOpen} onClose={closeTour} navigate={navigate} />
+      <CommandPalette />
     </div>
   );
 }
