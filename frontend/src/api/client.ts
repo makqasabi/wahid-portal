@@ -99,7 +99,17 @@ export const authApi = {
 
   disable2FA: (password: string) =>
     api.post('/auth/2fa/disable', { password }).then((r) => r.data),
+
+  // --- Microsoft / OIDC single sign-on ---
+  ssoEnabled: () =>
+    api.get<{ enabled: boolean }>('/auth/oidc/enabled').then((r) => r.data.enabled).catch(() => false),
+
+  ssoExchange: (ticket: string) =>
+    api.post<LoginResponse>('/auth/oidc/exchange', { ticket }).then((r) => r.data),
 };
+
+/** Absolute URL that kicks off the server-side OIDC redirect flow. */
+export const ssoLoginUrl = '/api/auth/oidc/login';
 
 // --- Tickets ---
 export const ticketsApi = {

@@ -9,6 +9,7 @@ import { entityScopeMiddleware } from "./middleware/entityScope.js";
 
 // ── Route imports ───────────────────────────────────────────
 import authRoutes from "./routes/auth.routes.js";
+import oidcRoutes from "./routes/oidc.routes.js";
 import sharedRoutes from "./routes/shared.routes.js";
 import ticketRoutes from "./routes/ticket.routes.js";
 import commentRoutes from "./routes/comment.routes.js";
@@ -41,6 +42,7 @@ app.get("/api/health", (_req, res) => {
 
 // ── Public routes (no auth) ─────────────────────────────────
 app.use("/api/auth", authRoutes);
+app.use("/api/auth/oidc", oidcRoutes);
 app.use("/api/shared", sharedRoutes);
 
 // SSE stream — handles its own auth via query token (EventSource can't set headers)
@@ -73,9 +75,11 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 // ── Background jobs ─────────────────────────────────────────
 import { scheduleSlaChecker } from "./jobs/slaChecker.js";
 import { scheduleWeeklyReport } from "./jobs/weeklyReport.js";
+import { startImapPoller } from "./services/imap.service.js";
 
 scheduleSlaChecker();
 scheduleWeeklyReport();
+startImapPoller();
 
 // ── Start server ─────────────────────────────────────────────
 app.listen(config.PORT, () => {

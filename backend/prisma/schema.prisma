@@ -68,6 +68,8 @@ model User {
   lastLogin           DateTime?
   createdAt           DateTime  @default(now())
   authProvider        String    @default("local")
+  microsoftId         String?   @unique
+  phone               String?
 
   entity              Entity         @relation(fields: [entityId], references: [id])
   team                Team           @relation(fields: [teamId], references: [id])

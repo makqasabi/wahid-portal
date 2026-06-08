@@ -1,6 +1,7 @@
 import prisma from "../config/prisma.js";
 import type { NotificationType } from "@prisma/client";
 import { sendNotificationEmail } from "./mail.service.js";
+import { notifyWhatsApp } from "./whatsapp.service.js";
 import { publish, type BroadcastNotification } from "./notification.bus.js";
 
 function emailSubject(type: NotificationType, displayId: string): string {
@@ -41,7 +42,7 @@ async function sendForNotification(
     const [user, ticket] = await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
-        select: { email: true, fullName: true, isActive: true },
+        select: { email: true, fullName: true, phone: true, isActive: true },
       }),
       prisma.ticket.findUnique({
         where: { id: ticketId },
@@ -50,15 +51,21 @@ async function sendForNotification(
     ]);
     if (!user || !user.isActive || !ticket) return false;
 
-    await sendNotificationEmail({
-      toEmail: user.email,
-      toName: user.fullName,
-      subject: emailSubject(type, ticket.displayId),
-      headline: emailHeadline(type, ticket.displayId),
-      body: message,
-      ticketDisplayId: ticket.displayId,
-      ticketId: ticket.id,
-    });
+    const headline = emailHeadline(type, ticket.displayId);
+
+    await Promise.all([
+      sendNotificationEmail({
+        toEmail: user.email,
+        toName: user.fullName,
+        subject: emailSubject(type, ticket.displayId),
+        headline,
+        body: message,
+        ticketDisplayId: ticket.displayId,
+        ticketId: ticket.id,
+      }),
+      // Fire WhatsApp alongside email — no-ops if disabled or no phone on file
+      notifyWhatsApp(user.phone, `${headline}\n\n${message}`),
+    ]);
     return true;
   } catch (err) {
     console.error("sendForNotification failed:", err);

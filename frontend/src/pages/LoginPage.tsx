@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
-import { authApi } from '@/api/client';
+import { authApi, ssoLoginUrl } from '@/api/client';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Eye, EyeOff, Lock, Mail, ArrowLeft, KeyRound, Globe } from 'lucide-react';
@@ -29,6 +29,30 @@ export default function LoginPage() {
 
   // 2FA state
   const [totpCode, setTotpCode] = useState('');
+
+  // SSO state
+  const [ssoEnabled, setSsoEnabled] = useState(false);
+
+  useEffect(() => {
+    authApi.ssoEnabled().then(setSsoEnabled);
+
+    // Surface any error bounced back from the OIDC redirect flow
+    const ssoError = new URLSearchParams(window.location.search).get('sso_error');
+    if (ssoError) {
+      const map: Record<string, string> = {
+        not_provisioned: t('login.ssoNotProvisioned'),
+        deactivated: t('login.invalidCredentials'),
+        no_email: t('login.ssoFailed'),
+        expired: t('login.ssoFailed'),
+        init_failed: t('login.ssoFailed'),
+        failed: t('login.ssoFailed'),
+      };
+      setError(map[ssoError] ?? t('login.ssoFailed'));
+      // clean the query string so a refresh doesn't re-show it
+      window.history.replaceState({}, '', '/login');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -239,6 +263,30 @@ export default function LoginPage() {
                   {t('login.signIn')}
                 </Button>
               </form>
+
+              {ssoEnabled && (
+                <>
+                  <div className="my-5 flex items-center gap-3">
+                    <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+                    <span className="text-xs text-gray-400 dark:text-gray-500">
+                      {t('login.or') ?? 'or'}
+                    </span>
+                    <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
+                  </div>
+                  <a
+                    href={ssoLoginUrl}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 21 21" aria-hidden="true">
+                      <rect x="1" y="1" width="9" height="9" fill="#f25022" />
+                      <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
+                      <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
+                      <rect x="11" y="11" width="9" height="9" fill="#ffb900" />
+                    </svg>
+                    {t('login.signInWithMicrosoft') ?? 'Sign in with Microsoft'}
+                  </a>
+                </>
+              )}
             </>
           )}
 
