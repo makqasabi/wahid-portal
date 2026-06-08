@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { GuidedTour, useGuidedTour } from '@/components/ui/GuidedTour';
 import { CommandPalette } from '@/components/CommandPalette';
+import { Spinner } from '@/components/ui/Spinner';
 
 export function AppLayout() {
   const { t } = useTranslation();
@@ -113,7 +114,15 @@ export function AppLayout() {
         <Header onOpenTour={openTour} />
         <main data-tour="main-content" className="flex-1 overflow-y-auto scroll-smooth">
           <div className="mx-auto w-full max-w-[1600px] animate-fade-in p-4 sm:p-6 lg:p-8">
-            <Outlet />
+            <Suspense
+              fallback={
+                <div className="flex h-[60vh] items-center justify-center">
+                  <Spinner size="lg" />
+                </div>
+              }
+            >
+              <Outlet />
+            </Suspense>
           </div>
         </main>
       </div>
