@@ -240,42 +240,36 @@ export default function TicketCreatePage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4">
+    <div className="mx-auto max-w-3xl space-y-5">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={() => navigate(-1)}>
           <ArrowLeft className="h-4 w-4 me-1" />
           {t('back')}
         </Button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-50">
           {isEdit ? t('editTicket') : t('createTicket')}
         </h1>
       </div>
 
-      <Card>
-        <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <Card title={t('actionItemLabel')}>
           {/* Action Item */}
           <div data-tour="create-action-item">
-            <label
-              htmlFor="actionItem"
-              className="mb-1.5 block text-sm font-medium text-gray-700"
-            >
-              {t('actionItemLabel')}
-            </label>
             <textarea
               id="actionItem"
               value={form.actionItem}
               onChange={(e) => handleChange('actionItem', e.target.value)}
               rows={4}
               placeholder={t('describeActionItem')}
-              className={`block w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-0 dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500 ${
+              className={`block w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-gray-900 shadow-sm transition-all placeholder:text-gray-400 focus:outline-none focus:ring-4 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500 ${
                 errors.actionItem
-                  ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                  : 'border-gray-300 focus:border-twn-500 focus:ring-twn-200 dark:border-gray-600'
+                  ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/15'
+                  : 'border-gray-300 hover:border-gray-400 focus:border-twn-500 focus:ring-twn-500/15 dark:border-gray-700 dark:hover:border-gray-600'
               }`}
             />
             {errors.actionItem && (
-              <p className="mt-1 text-xs text-red-600">{errors.actionItem}</p>
+              <p className="mt-1 text-xs text-rose-600">{errors.actionItem}</p>
             )}
           </div>
 
@@ -297,7 +291,9 @@ export default function TicketCreatePage() {
               </p>
             </div>
           )}
+        </Card>
 
+        <Card title={t('details')}>
           <div data-tour="create-assignments" className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {/* Category */}
             <Select
@@ -398,8 +394,10 @@ export default function TicketCreatePage() {
             />
           </div>
 
-          {/* Submit */}
-          <div data-tour="create-submit" className="flex justify-end gap-3 pt-4 border-t dark:border-gray-700">
+        </Card>
+
+        {/* Submit */}
+        <div data-tour="create-submit" className="flex flex-col-reverse justify-end gap-3 sm:flex-row">
             <Button
               variant="outline"
               type="button"
@@ -416,7 +414,6 @@ export default function TicketCreatePage() {
             </Button>
           </div>
         </form>
-      </Card>
     </div>
   );
 }

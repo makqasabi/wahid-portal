@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { authApi, ssoLoginUrl } from '@/api/client';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { Eye, EyeOff, Lock, Mail, ArrowLeft, KeyRound, Globe } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, ArrowLeft, KeyRound, Globe, Layers, ShieldCheck, Zap } from 'lucide-react';
 
 type View = 'login' | 'forgot' | 'reset' | '2fa';
 
@@ -163,28 +163,69 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-twn-600 to-meena-600 px-4">
+    <div className="relative min-h-screen lg:grid lg:grid-cols-[1.1fr_1fr]">
       {/* Language toggle */}
       <button
         onClick={toggleLanguage}
-        className="fixed top-4 end-4 z-50 inline-flex items-center gap-1.5 rounded-lg bg-white/15 backdrop-blur-sm px-3 py-2 text-sm font-medium text-white hover:bg-white/25 transition-colors"
+        className="fixed top-4 end-4 z-50 inline-flex items-center gap-1.5 rounded-lg border border-gray-200/70 bg-white/70 px-3 py-2 text-sm font-medium text-gray-700 backdrop-blur transition-colors hover:bg-white lg:border-white/20 lg:bg-white/10 lg:text-white lg:hover:bg-white/20 dark:border-gray-700 dark:bg-gray-900/70 dark:text-gray-200"
       >
         <Globe className="h-4 w-4" />
         {isArabic ? 'English' : 'العربية'}
       </button>
 
-      <div className="w-full max-w-md">
-        {/* Logo / Branding */}
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold text-white tracking-tight">
-            واحد
-          </h1>
-          <p className="mt-1 text-base text-white/70 font-light tracking-wide">Wahid</p>
-          <p className="mt-2 text-lg text-white/80">بوابة العمليات</p>
+      {/* ── Brand panel (desktop) ── */}
+      <aside className="relative hidden overflow-hidden bg-gradient-to-br from-twn-700 via-twn-600 to-meena-600 lg:flex lg:flex-col lg:justify-between lg:p-14">
+        <div className="pointer-events-none absolute -start-24 -top-24 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 -end-16 h-96 w-96 rounded-full bg-meena-300/20 blur-3xl" />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:radial-gradient(circle_at_1px_1px,#fff_1px,transparent_0)] [background-size:22px_22px]" />
+
+        <div className="relative flex items-center gap-3 text-white">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur">
+            <Layers className="h-6 w-6" />
+          </div>
+          <div className="leading-tight">
+            <p className="text-2xl font-bold tracking-tight">واحد</p>
+            <p className="text-xs font-medium uppercase tracking-[0.25em] text-white/70">Wahid</p>
+          </div>
         </div>
 
-        {/* Card */}
-        <div className="rounded-2xl border border-white/20 bg-white p-6 shadow-2xl sm:p-8 dark:bg-gray-800 dark:border-gray-700">
+        <div className="relative text-white">
+          <h2 className="max-w-md text-3xl font-bold leading-snug tracking-tight xl:text-4xl">
+            {t('login.tagline')}
+          </h2>
+          <ul className="mt-8 space-y-4">
+            {[
+              { icon: <Globe className="h-5 w-5" />, text: t('login.feature.bilingual') },
+              { icon: <ShieldCheck className="h-5 w-5" />, text: t('login.feature.secure') },
+              { icon: <Zap className="h-5 w-5" />, text: t('login.feature.realtime') },
+            ].map((f, i) => (
+              <li key={i} className="flex items-center gap-3 text-white/90">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/20">
+                  {f.icon}
+                </span>
+                <span className="text-sm font-medium">{f.text}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="relative text-xs text-white/60">{t('login.footer')}</p>
+      </aside>
+
+      {/* ── Form side ── */}
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 dark:bg-gray-950">
+        <div className="w-full max-w-md animate-fade-in-up">
+          {/* Mobile branding */}
+          <div className="mb-8 text-center lg:hidden">
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-twn-500 to-twn-700 text-white shadow-lg ring-1 ring-twn-600/20">
+              <Layers className="h-7 w-7" />
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">واحد</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">بوابة العمليات · Wahid</p>
+          </div>
+
+          {/* Card */}
+          <div className="surface p-6 sm:p-8">
 
           {/* ── Login View ── */}
           {view === 'login' && (
@@ -479,11 +520,12 @@ export default function LoginPage() {
               </form>
             </>
           )}
-        </div>
+          </div>
 
-        <p className="mt-6 text-center text-xs text-white/60">
-          {t('login.footer')}
-        </p>
+          <p className="mt-6 text-center text-xs text-gray-400 dark:text-gray-500">
+            {t('login.footer')}
+          </p>
+        </div>
       </div>
     </div>
   );

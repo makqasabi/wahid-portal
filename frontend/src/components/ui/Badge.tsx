@@ -3,28 +3,48 @@ import { cn } from '@/lib/utils';
 
 export interface BadgeProps {
   children: ReactNode;
-  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'neutral';
+  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'brand';
+  dot?: boolean;
   className?: string;
 }
 
 const variantClasses: Record<string, string> = {
-  default: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:border-gray-600',
-  success: 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',
-  warning: 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-800',
-  danger: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
-  info: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
-  neutral: 'bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600',
+  default:
+    'bg-gray-100 text-gray-700 ring-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700',
+  brand:
+    'bg-twn-50 text-twn-700 ring-twn-600/20 dark:bg-twn-500/10 dark:text-twn-300 dark:ring-twn-400/20',
+  success:
+    'bg-emerald-50 text-emerald-700 ring-emerald-600/20 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-400/20',
+  warning:
+    'bg-amber-50 text-amber-700 ring-amber-600/20 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-400/20',
+  danger:
+    'bg-rose-50 text-rose-700 ring-rose-600/20 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-400/20',
+  info:
+    'bg-sky-50 text-sky-700 ring-sky-600/20 dark:bg-sky-500/10 dark:text-sky-300 dark:ring-sky-400/20',
+  neutral:
+    'bg-gray-50 text-gray-500 ring-gray-200 dark:bg-gray-800/60 dark:text-gray-400 dark:ring-gray-700',
 };
 
-export function Badge({ children, variant = 'default', className }: BadgeProps) {
+const dotClasses: Record<string, string> = {
+  default: 'bg-gray-400',
+  brand: 'bg-twn-500',
+  success: 'bg-emerald-500',
+  warning: 'bg-amber-500',
+  danger: 'bg-rose-500',
+  info: 'bg-sky-500',
+  neutral: 'bg-gray-400',
+};
+
+export function Badge({ children, variant = 'default', dot = false, className }: BadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium',
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset',
         variantClasses[variant],
         className,
       )}
     >
+      {dot && <span className={cn('h-1.5 w-1.5 rounded-full', dotClasses[variant])} />}
       {children}
     </span>
   );

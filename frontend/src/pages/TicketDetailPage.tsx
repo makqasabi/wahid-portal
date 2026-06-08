@@ -20,6 +20,11 @@ import {
   MessageSquare,
   Lock,
   History,
+  Tag,
+  Building2,
+  Users,
+  AlertTriangle,
+  User as UserIcon,
 } from 'lucide-react';
 import { ticketsApi, commentsApi, exportApi, attachmentsApi } from '@/api/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -367,39 +372,40 @@ export default function TicketDetailPage() {
       {/* Two-column layout */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Left column: Ticket Details */}
-        <div className="lg:col-span-1 space-y-4">
+        <div className="space-y-4 lg:col-span-1">
+          {/* Action item */}
+          <Card>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+              {t('actionItem')}
+            </p>
+            <p className="mt-2 whitespace-pre-wrap text-[0.95rem] font-medium leading-relaxed text-gray-900 dark:text-gray-100">
+              {ticket.actionItem}
+            </p>
+          </Card>
+
           <Card title={t('details')}>
-            <dl className="space-y-3 text-sm">
-              <DetailRow label={t('actionItem')}>
-                <p className="text-gray-900 whitespace-pre-wrap">{ticket.actionItem}</p>
-              </DetailRow>
-              <DetailRow label={t('category')}>
+            <dl className="-my-1 divide-y divide-gray-100 text-sm dark:divide-gray-800">
+              <DetailRow icon={<Tag className="h-3.5 w-3.5" />} label={t('category')}>
                 {localName(ticket.category, i18n.language)}
               </DetailRow>
-              <DetailRow label={t('client')}>
+              <DetailRow icon={<Building2 className="h-3.5 w-3.5" />} label={t('client')}>
                 {localName(ticket.client, i18n.language)}
               </DetailRow>
-              <DetailRow label={t('submittedBy')}>
+              <DetailRow icon={<UserIcon className="h-3.5 w-3.5" />} label={t('submittedBy')}>
                 {ticket.submittedBy?.fullName ?? '-'}
               </DetailRow>
-              <DetailRow label={t('submittingTeam')}>
+              <DetailRow icon={<Users className="h-3.5 w-3.5" />} label={t('submittingTeam')}>
                 {localName(ticket.submittingTeam, i18n.language)}
               </DetailRow>
-              <DetailRow label={t('owner')}>
+              <DetailRow icon={<UserIcon className="h-3.5 w-3.5" />} label={t('owner')}>
                 {ticket.owner?.fullName ?? '-'}
               </DetailRow>
-              <DetailRow label={t('ownerTeam')}>
+              <DetailRow icon={<Users className="h-3.5 w-3.5" />} label={t('ownerTeam')}>
                 {localName(ticket.ownerTeam, i18n.language)}
               </DetailRow>
-              <DetailRow label={t('ownerEntity')}>
+              <DetailRow icon={<Building2 className="h-3.5 w-3.5" />} label={t('ownerEntity')}>
                 {ticket.ownerEntity ? (
-                  <Badge
-                    variant={
-                      isMeenaEntity(ticket.ownerEntity.name)
-                        ? 'warning'
-                        : 'info'
-                    }
-                  >
+                  <Badge variant={isMeenaEntity(ticket.ownerEntity.name) ? 'warning' : 'info'}>
                     {localName(ticket.ownerEntity, i18n.language)}
                   </Badge>
                 ) : (
@@ -407,28 +413,25 @@ export default function TicketDetailPage() {
                 )}
               </DetailRow>
               {ticket.support && (
-                <DetailRow label={t('support')}>
+                <DetailRow icon={<UserIcon className="h-3.5 w-3.5" />} label={t('support')}>
                   {ticket.support.fullName}
                 </DetailRow>
               )}
-              <DetailRow label={t('dueDate')}>
-                <span className="inline-flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5 text-gray-400" />
-                  {ticket.dueDate ? formatDate(ticket.dueDate) : '-'}
-                </span>
+              <DetailRow icon={<Calendar className="h-3.5 w-3.5" />} label={t('dueDate')}>
+                {ticket.dueDate ? formatDate(ticket.dueDate) : '-'}
               </DetailRow>
               {ticket.closureDate && (
-                <DetailRow label={t('closureDate')}>
+                <DetailRow icon={<CheckCircle className="h-3.5 w-3.5" />} label={t('closureDate')}>
                   {formatDate(ticket.closureDate)}
                 </DetailRow>
               )}
-              <DetailRow label={t('priority')}>
+              <DetailRow icon={<AlertTriangle className="h-3.5 w-3.5" />} label={t('priority')}>
                 <PriorityBadge priority={ticket.priority} />
               </DetailRow>
-              <DetailRow label={t('created')}>
+              <DetailRow icon={<Clock className="h-3.5 w-3.5" />} label={t('created')}>
                 {formatDateTime(ticket.createdAt)}
               </DetailRow>
-              <DetailRow label={t('updated')}>
+              <DetailRow icon={<History className="h-3.5 w-3.5" />} label={t('updated')}>
                 {formatDateTime(ticket.updatedAt)}
               </DetailRow>
             </dl>
@@ -438,21 +441,27 @@ export default function TicketDetailPage() {
         {/* Right column: Activity */}
         <div className="lg:col-span-2">
           {/* Tabs */}
-          <div className="mb-4 flex gap-1 rounded-lg border border-gray-200 bg-gray-50 p-1 overflow-x-auto dark:border-gray-700 dark:bg-gray-800">
+          <div className="mb-4 flex gap-1 overflow-x-auto rounded-xl border border-gray-200/80 bg-gray-100/70 p-1 dark:border-gray-800 dark:bg-gray-900/60">
             {tabs.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-all ${
                   activeTab === tab.key
-                    ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100'
-                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                    ? 'bg-white text-twn-700 shadow-sm ring-1 ring-gray-200/70 dark:bg-gray-800 dark:text-twn-300 dark:ring-gray-700'
+                    : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
               >
                 {tab.icon}
                 {tab.label}
                 {tab.count !== undefined && tab.count > 0 && (
-                  <span className="ms-1 rounded-full bg-gray-200 px-1.5 py-0.5 text-xs text-gray-600 dark:bg-gray-600 dark:text-gray-300">
+                  <span
+                    className={`ms-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold ${
+                      activeTab === tab.key
+                        ? 'bg-twn-100 text-twn-700 dark:bg-twn-500/20 dark:text-twn-300'
+                        : 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+                    }`}
+                  >
                     {tab.count}
                   </span>
                 )}
@@ -710,17 +719,22 @@ export default function TicketDetailPage() {
 
 function DetailRow({
   label,
+  icon,
   children,
 }: {
   label: string;
+  icon?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-0.5">
-      <dt className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
-        {label}
+    <div className="flex items-center justify-between gap-4 py-2.5">
+      <dt className="flex shrink-0 items-center gap-2 text-gray-500 dark:text-gray-400">
+        {icon}
+        <span className="text-xs font-medium">{label}</span>
       </dt>
-      <dd className="break-words text-gray-900 dark:text-gray-100">{children}</dd>
+      <dd className="min-w-0 break-words text-end text-sm font-medium text-gray-800 dark:text-gray-200">
+        {children}
+      </dd>
     </div>
   );
 }
@@ -733,36 +747,43 @@ function CommentBubble({
   isInternal?: boolean;
 }) {
   const { t, i18n } = useTranslation();
+  const name = comment.author?.fullName ?? t('comments.unknown');
+  const initials =
+    name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase() || '?';
   return (
-    <div
-      className={`rounded-lg border px-4 py-3 ${
-        isInternal
-          ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20'
-          : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900'
-      }`}
-    >
-      <div className="mb-1 flex items-center gap-2">
-        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-          {comment.author?.fullName ?? t('comments.unknown')}
-        </span>
-        {comment.author?.entity && (
-          <Badge
-            variant={
-              isMeenaEntity(comment.author.entity.name)
-                ? 'warning'
-                : 'info'
-            }
-          >
-            {localName(comment.author.entity, i18n.language)}
-          </Badge>
-        )}
-        <span className="text-xs text-gray-400 dark:text-gray-500">
-          {formatDateTime(comment.createdAt)}
-        </span>
+    <div className="flex gap-3">
+      <div
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white shadow-sm ${
+          isInternal ? 'bg-amber-500' : 'bg-gradient-to-br from-twn-500 to-twn-700'
+        }`}
+      >
+        {initials}
       </div>
-      <p className="text-sm text-gray-700 whitespace-pre-wrap dark:text-gray-300">
-        {comment.body}
-      </p>
+      <div
+        className={`min-w-0 flex-1 rounded-2xl border px-4 py-3 ${
+          isInternal
+            ? 'border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-900/15'
+            : 'border-gray-200 bg-gray-50 dark:border-gray-800 dark:bg-gray-900/40'
+        }`}
+      >
+        <div className="mb-1 flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{name}</span>
+          {comment.author?.entity && (
+            <Badge variant={isMeenaEntity(comment.author.entity.name) ? 'warning' : 'info'}>
+              {localName(comment.author.entity, i18n.language)}
+            </Badge>
+          )}
+          <span className="text-xs text-gray-400 dark:text-gray-500">
+            {formatDateTime(comment.createdAt)}
+          </span>
+        </div>
+        <p className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300">{comment.body}</p>
+      </div>
     </div>
   );
 }

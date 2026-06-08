@@ -33,12 +33,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             id={inputId}
             dir="auto"
             className={cn(
-              'block w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 transition-colors dark:bg-gray-800 dark:text-gray-100 dark:placeholder-gray-500',
-              'focus:outline-none focus:ring-2 focus:ring-offset-0',
-              'disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 dark:disabled:bg-gray-900 dark:disabled:text-gray-400',
+              'block h-11 w-full rounded-xl border bg-white px-3.5 text-sm text-gray-900 shadow-sm transition-all placeholder:text-gray-400 dark:bg-gray-900 dark:text-gray-100 dark:placeholder:text-gray-500',
+              'focus:outline-none focus:ring-4',
+              'disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-500 dark:disabled:bg-gray-950 dark:disabled:text-gray-400',
               error
-                ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                : 'border-gray-300 focus:border-twn-500 focus:ring-twn-200 dark:border-gray-600',
+                ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/15'
+                : 'border-gray-300 hover:border-gray-400 focus:border-twn-500 focus:ring-twn-500/15 dark:border-gray-700 dark:hover:border-gray-600',
               icon && 'ps-10',
               className,
             )}

@@ -27,5 +27,5 @@ export function StatusBadge({ status }: StatusBadgeProps) {
   const variant = statusVariant[status] ?? ('default' as const);
   const label = t(statusKey[status] ?? status);
 
-  return <Badge variant={variant}>{label}</Badge>;
+  return <Badge variant={variant} dot>{label}</Badge>;
 }

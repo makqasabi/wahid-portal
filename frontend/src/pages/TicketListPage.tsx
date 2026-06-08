@@ -243,7 +243,7 @@ export default function TicketListPage() {
       <TicketFilters />
 
       {/* Data Table */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      <div className="surface overflow-hidden">
         <DataTable
           columns={columns}
           data={tickets as unknown as Record<string, unknown>[]}

@@ -28,10 +28,10 @@ export interface DataTableProps<T> {
 
 function SkeletonRow({ cols }: { cols: number }) {
   return (
-    <tr className="animate-pulse">
+    <tr>
       {Array.from({ length: cols }).map((_, i) => (
-        <td key={i} className="px-4 py-3">
-          <div className="h-4 rounded bg-gray-200 dark:bg-gray-700" />
+        <td key={i} className="px-4 py-3.5">
+          <div className="skeleton h-4 w-full" />
         </td>
       ))}
     </tr>
@@ -120,14 +120,14 @@ export function DataTable<T extends Record<string, unknown>>({
       {/* Desktop table */}
       <div className={cn('w-full overflow-x-auto', mobileCard && 'hidden sm:block')}>
       <table className="w-full min-w-[640px] text-sm">
-        <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900">
+        <thead className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50/80 backdrop-blur dark:border-gray-800 dark:bg-gray-900/70">
           <tr>
             {columns.map((col) => (
               <th
                 key={col.key}
                 className={cn(
-                  'px-4 py-3 text-start text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400',
-                  col.sortable && 'cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200',
+                  'whitespace-nowrap px-4 py-3.5 text-start text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400',
+                  col.sortable && 'cursor-pointer select-none transition-colors hover:text-gray-800 dark:hover:text-gray-200',
                 )}
                 onClick={() => col.sortable && handleSort(col.key)}
               >
@@ -170,13 +170,13 @@ export function DataTable<T extends Record<string, unknown>>({
               <tr
                 key={(row.id as string) ?? rowIndex}
                 className={cn(
-                  'hover:bg-gray-50 transition-colors even:bg-gray-50/50 dark:hover:bg-gray-700 dark:even:bg-gray-800/50',
+                  'transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50',
                   onRowClick && 'cursor-pointer',
                 )}
                 onClick={() => onRowClick?.(row)}
               >
                 {columns.map((col) => (
-                  <td key={col.key} className="px-4 py-3 text-start text-gray-700 dark:text-gray-300">
+                  <td key={col.key} className="px-4 py-3.5 text-start text-gray-700 dark:text-gray-300">
                     {col.render
                       ? col.render(row)
                       : (row[col.key] as ReactNode) ?? '-'}

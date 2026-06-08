@@ -106,12 +106,14 @@ export function AppLayout() {
   const { isTourOpen, openTour, closeTour } = useGuidedTour();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
+    <div className="theme-transition flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
       <Sidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header onOpenTour={openTour} />
-        <main data-tour="main-content" className="flex-1 overflow-y-auto p-4 sm:p-6">
-          <Outlet />
+        <main data-tour="main-content" className="flex-1 overflow-y-auto scroll-smooth">
+          <div className="mx-auto w-full max-w-[1600px] animate-fade-in p-4 sm:p-6 lg:p-8">
+            <Outlet />
+          </div>
         </main>
       </div>
       <GuidedTour open={isTourOpen} onClose={closeTour} navigate={navigate} />

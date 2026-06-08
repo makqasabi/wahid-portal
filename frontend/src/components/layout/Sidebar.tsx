@@ -150,16 +150,18 @@ export function Sidebar() {
       <div data-tour="logo" className={cn('flex items-center border-b border-gray-200 py-5 transition-all duration-200 dark:border-gray-700', collapsed ? 'justify-center px-2' : 'gap-3 px-5')}>
         <div
           className={cn(
-            'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
-            isMeena ? 'bg-meena-600' : 'bg-twn-600',
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm ring-1',
+            isMeena
+              ? 'bg-gradient-to-br from-meena-500 to-meena-700 ring-meena-600/20'
+              : 'bg-gradient-to-br from-twn-500 to-twn-700 ring-twn-600/20',
           )}
         >
-          <Layers className="h-5 w-5 text-white" />
+          <Layers className="h-5 w-5" />
         </div>
         {!collapsed && (
           <div className="flex flex-col leading-tight">
-            <span className="text-lg font-bold text-gray-900 dark:text-gray-100">واحد</span>
-            <span className="text-[10px] text-gray-400 tracking-wider dark:text-gray-500">WAHID</span>
+            <span className="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50">واحد</span>
+            <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">Wahid</span>
           </div>
         )}
       </div>
@@ -177,14 +179,16 @@ export function Sidebar() {
               title={collapsed ? t(item.labelKey) : undefined}
               className={({ isActive }) =>
                 cn(
-                  'group relative flex items-center rounded-lg py-2.5 text-sm font-medium transition-colors',
+                  'group relative flex items-center rounded-xl py-2.5 text-sm font-medium transition-all',
                   collapsed ? 'justify-center px-2' : 'gap-3 px-3',
                   isActive
                     ? cn(
-                        'text-white',
-                        isMeena ? 'bg-meena-600' : 'bg-twn-600',
+                        'before:absolute before:start-0 before:top-1/2 before:h-5 before:w-1 before:-translate-y-1/2 before:rounded-full',
+                        isMeena
+                          ? 'bg-meena-50 text-meena-700 before:bg-meena-500 dark:bg-meena-500/10 dark:text-meena-300'
+                          : 'bg-twn-50 text-twn-700 before:bg-twn-500 dark:bg-twn-500/10 dark:text-twn-300',
                       )
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100',
+                    : 'text-gray-500 hover:bg-gray-100/80 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800/70 dark:hover:text-gray-100',
                 )
               }
             >
@@ -291,7 +295,7 @@ export function Sidebar() {
       {/* Mobile hamburger (visible only on small screens, positioned by Header) */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed start-4 top-4 z-50 rounded-lg bg-white p-2 shadow-md lg:hidden dark:bg-gray-800 dark:text-gray-100"
+        className="fixed start-3 top-3.5 z-50 inline-flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200/80 bg-white/90 text-gray-700 shadow-sm backdrop-blur transition-colors hover:bg-gray-50 lg:hidden dark:border-gray-700 dark:bg-gray-900/90 dark:text-gray-200"
         aria-label="Toggle menu"
       >
         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -308,7 +312,7 @@ export function Sidebar() {
       {/* Sidebar panel */}
       <aside
         className={cn(
-          'fixed inset-y-0 start-0 z-40 border-e border-gray-200 bg-white transition-all duration-200 lg:static lg:!translate-x-0 dark:border-gray-700 dark:bg-gray-900',
+          'fixed inset-y-0 start-0 z-40 border-e border-gray-200/80 bg-white shadow-xl transition-all duration-200 lg:static lg:!translate-x-0 lg:shadow-none dark:border-gray-800 dark:bg-gray-900',
           collapsed ? 'w-16' : 'w-[250px]',
           mobileOpen ? 'translate-x-0' : 'ltr:-translate-x-full rtl:translate-x-full',
         )}

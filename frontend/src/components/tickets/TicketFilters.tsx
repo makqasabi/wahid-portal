@@ -34,9 +34,13 @@ export function TicketFilters() {
   const [clients, setClients] = useState<SelectOption[]>([]);
   const [categories, setCategories] = useState<SelectOption[]>([]);
   const [users, setUsers] = useState<SelectOption[]>([]);
-  const [entityTabs, setEntityTabs] = useState<{ value: string; label: string }[]>([
+  const [entities, setEntities] = useState<Entity[]>([]);
+
+  // Derived on every render so labels track the active language.
+  const entityTabs = [
     { value: '', label: t('all') },
-  ]);
+    ...entities.map((e) => ({ value: e.id, label: localName(e, i18n.language) })),
+  ];
 
   // Fetch dropdown options on mount
   useEffect(() => {
@@ -52,12 +56,7 @@ export function TicketFilters() {
       setUsers(data.map((u) => ({ value: u.id, label: u.fullName }))),
     ).catch(() => {});
 
-    referenceApi.getEntities().then((data: Entity[]) =>
-      setEntityTabs([
-        { value: '', label: t('all') },
-        ...data.map((e) => ({ value: e.id, label: localName(e, i18n.language) })),
-      ]),
-    ).catch(() => {});
+    referenceApi.getEntities().then(setEntities).catch(() => {});
   }, []);
 
   // Sync URL params to store on mount

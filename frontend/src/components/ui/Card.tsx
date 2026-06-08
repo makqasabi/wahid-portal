@@ -1,9 +1,8 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, HTMLAttributes } from 'react';
 import { cn } from '@/lib/utils';
 
-export interface CardProps {
+export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
-  className?: string;
   title?: string;
   actions?: ReactNode;
   padding?: boolean;
@@ -15,24 +14,28 @@ export function Card({
   title,
   actions,
   padding = true,
+  ...rest
 }: CardProps) {
   return (
     <div
       className={cn(
-        'rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800',
-        padding && 'p-6',
+        'rounded-2xl border border-gray-200/80 bg-white shadow-card dark:border-gray-800 dark:bg-gray-900',
+        padding && 'p-5 sm:p-6',
         className,
       )}
+      {...rest}
     >
       {(title || actions) && (
         <div
           className={cn(
-            'flex items-center justify-between',
-            padding ? 'mb-4' : 'mb-4 px-6 pt-6',
+            'flex items-center justify-between gap-3',
+            padding ? 'mb-5' : 'mb-5 px-5 pt-5 sm:px-6 sm:pt-6',
           )}
         >
           {title && (
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
+            <h3 className="text-[0.95rem] font-semibold tracking-tight text-gray-900 dark:text-gray-100">
+              {title}
+            </h3>
           )}
           {actions && <div className="flex items-center gap-2">{actions}</div>}
         </div>

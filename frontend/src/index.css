@@ -3,47 +3,153 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    color-scheme: light;
+    --ring: 33 104 140; /* twn-600 */
+  }
+  .dark {
+    color-scheme: dark;
+  }
+
+  * {
+    border-color: theme('colors.gray.200');
+  }
+  .dark * {
+    border-color: theme('colors.gray.800');
+  }
+
   html {
     scroll-behavior: smooth;
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont,
-      'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    -webkit-text-size-adjust: 100%;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 
   body {
-    @apply bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100;
+    @apply bg-gray-50 font-sans text-gray-900 antialiased dark:bg-gray-950 dark:text-gray-100;
+    text-rendering: optimizeLegibility;
   }
 
-  /* Custom scrollbar */
+  /* Arabic / RTL typography */
+  [dir='rtl'] body {
+    @apply font-arabic;
+  }
+  [dir='rtl'] {
+    font-family: theme('fontFamily.arabic');
+  }
+  .recharts-text {
+    font-family: theme('fontFamily.arabic');
+  }
+
+  /* Theme-aware charts (recharts doesn't adapt to dark mode on its own) */
+  .recharts-cartesian-axis-tick-value {
+    fill: theme('colors.gray.500');
+  }
+  .dark .recharts-cartesian-axis-tick-value {
+    fill: theme('colors.gray.400');
+  }
+  .recharts-cartesian-grid line {
+    stroke: theme('colors.gray.200');
+  }
+  .dark .recharts-cartesian-grid line {
+    stroke: theme('colors.gray.800');
+  }
+  .recharts-legend-item-text {
+    color: theme('colors.gray.600') !important;
+  }
+  .dark .recharts-legend-item-text {
+    color: theme('colors.gray.300') !important;
+  }
+  .dark .recharts-tooltip-wrapper .recharts-default-tooltip {
+    background-color: theme('colors.gray.900') !important;
+    border-color: theme('colors.gray.700') !important;
+    border-radius: 0.75rem;
+    color: theme('colors.gray.100');
+  }
+
+  /* Tabular numerals for data-dense UI */
+  table,
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Headings */
+  h1, h2, h3, h4 {
+    @apply font-semibold tracking-tight text-gray-900 dark:text-gray-50;
+    text-wrap: balance;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-twn-500/20 text-twn-900 dark:text-twn-100;
+  }
+
+  /* Focus-visible — consistent brand ring everywhere */
+  :focus-visible {
+    @apply outline-none ring-2 ring-twn-500/60 ring-offset-1 ring-offset-white dark:ring-offset-gray-950;
+  }
+
+  /* Refined scrollbars */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 10px;
+    height: 10px;
   }
-
   ::-webkit-scrollbar-track {
     @apply bg-transparent;
   }
-
   ::-webkit-scrollbar-thumb {
-    @apply rounded-full bg-gray-300 dark:bg-gray-700;
+    @apply rounded-full border-2 border-solid border-transparent bg-gray-300 bg-clip-content dark:bg-gray-700;
   }
-
   ::-webkit-scrollbar-thumb:hover {
     @apply bg-gray-400 dark:bg-gray-600;
   }
-
-  /* RTL support */
-  [dir='rtl'] {
-    font-family: 'Noto Sans Arabic', 'Inter', system-ui, sans-serif;
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.gray.300') transparent;
+  }
+  .dark * {
+    scrollbar-color: theme('colors.gray.700') transparent;
   }
 
-  /* Recharts text inherits the right font */
-  .recharts-text {
-    font-family: 'Noto Sans Arabic', 'Inter', system-ui, sans-serif;
-  }
-
-  /* Tables in RTL: ensure proper text alignment */
+  /* Tables in RTL: proper text alignment */
   [dir='rtl'] table th,
   [dir='rtl'] table td {
     text-align: right;
+  }
+
+  /* Smooth, non-janky theme transition on the big surfaces only */
+  body,
+  .theme-transition {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* Reusable surface — a card-like container */
+  .surface {
+    @apply rounded-2xl border border-gray-200/80 bg-white shadow-card dark:border-gray-800 dark:bg-gray-900;
+  }
+
+  /* Subtle, glassy sticky bars (header) */
+  .glass {
+    @apply bg-white/80 backdrop-blur-xl backdrop-saturate-150 dark:bg-gray-950/70;
+  }
+
+  /* Skeleton shimmer block */
+  .skeleton {
+    @apply relative overflow-hidden rounded-md bg-gray-200/70 dark:bg-gray-800/70;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent dark:via-white/5;
+    animation: shimmer 1.6s infinite;
   }
 }
