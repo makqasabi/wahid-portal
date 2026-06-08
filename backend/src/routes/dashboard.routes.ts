@@ -333,4 +333,108 @@ router.get("/aging", async (req: ScopedRequest, res: Response) => {
   }
 });
 
+// ── GET /kpi-trends — real prev-period deltas + weekly sparklines ───
+// Computed from ticket timestamps only (no schema/history needed). Flow
+// metrics (completed/created/on-time/sla-variance) have real history;
+// point-in-time snapshots (open/overdue) intentionally omitted — we never
+// fabricate trend data for metrics without a historical basis.
+
+router.get("/kpi-trends", async (req: ScopedRequest, res: Response) => {
+  try {
+    const scope = entityWhere(req);
+    const now = new Date();
+    const dayMs = 86_400_000;
+    const since60 = new Date(now.getTime() - 60 * dayMs);
+    const d30 = new Date(now.getTime() - 30 * dayMs);
+
+    const [completedRecent, createdRecent] = await Promise.all([
+      prisma.ticket.findMany({
+        where: { ...scope, progress: "COMPLETED", closureDate: { gte: since60 } },
+        select: { closureDate: true, slaVarianceDays: true },
+      }),
+      prisma.ticket.findMany({
+        where: { ...scope, createdAt: { gte: since60 } },
+        select: { createdAt: true },
+      }),
+    ]);
+
+    // 8 weekly buckets over the last 56 days, oldest → newest
+    const weekIndex = (d: Date): number => {
+      const diff = Math.floor((now.getTime() - d.getTime()) / dayMs);
+      if (diff < 0 || diff >= 56) return -1;
+      return 7 - Math.floor(diff / 7);
+    };
+
+    const completedSeries = Array(8).fill(0);
+    const onTimeNum = Array(8).fill(0);
+    const onTimeDen = Array(8).fill(0);
+    const slaSum = Array(8).fill(0);
+    const slaCnt = Array(8).fill(0);
+    const createdSeries = Array(8).fill(0);
+
+    for (const t of completedRecent) {
+      if (!t.closureDate) continue;
+      const wi = weekIndex(t.closureDate);
+      if (wi < 0) continue;
+      completedSeries[wi]++;
+      onTimeDen[wi]++;
+      if (t.slaVarianceDays != null) {
+        slaSum[wi] += t.slaVarianceDays;
+        slaCnt[wi]++;
+        if (t.slaVarianceDays <= 0) onTimeNum[wi]++;
+      }
+    }
+    for (const t of createdRecent) {
+      const wi = weekIndex(t.createdAt);
+      if (wi >= 0) createdSeries[wi]++;
+    }
+
+    const onTimeSeries = onTimeDen.map((d, i) => (d > 0 ? Math.round((onTimeNum[i] / d) * 100) : 0));
+    const slaSeries = slaCnt.map((c, i) => (c > 0 ? Math.round((slaSum[i] / c) * 10) / 10 : 0));
+
+    // current (last 30d) vs previous (30–60d ago)
+    const win = (d: Date): "cur" | "prev" | null =>
+      d >= d30 && d <= now ? "cur" : d >= since60 && d < d30 ? "prev" : null;
+
+    let curCnt = 0, prevCnt = 0, curOnN = 0, curOnD = 0, prevOnN = 0, prevOnD = 0;
+    let curSlaSum = 0, curSlaCnt = 0, prevSlaSum = 0, prevSlaCnt = 0;
+    for (const t of completedRecent) {
+      if (!t.closureDate) continue;
+      const w = win(t.closureDate);
+      if (!w) continue;
+      if (w === "cur") {
+        curCnt++; curOnD++;
+        if (t.slaVarianceDays != null) { curSlaSum += t.slaVarianceDays; curSlaCnt++; if (t.slaVarianceDays <= 0) curOnN++; }
+      } else {
+        prevCnt++; prevOnD++;
+        if (t.slaVarianceDays != null) { prevSlaSum += t.slaVarianceDays; prevSlaCnt++; if (t.slaVarianceDays <= 0) prevOnN++; }
+      }
+    }
+    let curCreated = 0, prevCreated = 0;
+    for (const t of createdRecent) {
+      const w = win(t.createdAt);
+      if (w === "cur") curCreated++;
+      else if (w === "prev") prevCreated++;
+    }
+
+    res.json({
+      completed: { series: completedSeries, current: curCnt, previous: prevCnt },
+      created: { series: createdSeries, current: curCreated, previous: prevCreated },
+      onTimeRate: {
+        series: onTimeSeries,
+        current: curOnD > 0 ? Math.round((curOnN / curOnD) * 100) : 0,
+        previous: prevOnD > 0 ? Math.round((prevOnN / prevOnD) * 100) : 0,
+      },
+      avgSlaVariance: {
+        series: slaSeries,
+        current: curSlaCnt > 0 ? Math.round((curSlaSum / curSlaCnt) * 10) / 10 : 0,
+        previous: prevSlaCnt > 0 ? Math.round((prevSlaSum / prevSlaCnt) * 10) / 10 : 0,
+      },
+    });
+  } catch (err) {
+    console.error("GET /dashboard/kpi-trends error:", err);
+    res.status(500).json({ error: "Failed to fetch KPI trends" });
+  }
+});
+
 export default router;

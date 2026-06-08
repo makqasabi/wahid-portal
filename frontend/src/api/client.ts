@@ -141,9 +141,28 @@ export const commentsApi = {
 };
 
 // --- Dashboard ---
+export interface TrendMetric {
+  series: number[];
+  current: number;
+  previous: number;
+}
+export interface KpiTrends {
+  completed: TrendMetric;
+  created: TrendMetric;
+  onTimeRate: TrendMetric;
+  avgSlaVariance: TrendMetric;
+}
+
 export const dashboardApi = {
   getStats: (entityId?: string) =>
     api.get<DashboardStats>('/dashboard/stats', { params: entityId ? { entityId } : {} }).then((r) => r.data),
+
+  // Returns null on failure so the dashboard degrades gracefully (no trends).
+  getKpiTrends: (entityId?: string) =>
+    api
+      .get<KpiTrends>('/dashboard/kpi-trends', { params: entityId ? { entityId } : {} })
+      .then((r) => r.data)
+      .catch(() => null as KpiTrends | null),
 
   getEntitySplit: (entityId?: string) =>
     api.get('/dashboard/entity-split', { params: entityId ? { entityId } : {} }).then((r) => r.data.data ?? r.data),

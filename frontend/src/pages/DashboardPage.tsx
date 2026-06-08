@@ -23,9 +23,11 @@ import {
   TrendingUp,
   RefreshCw,
   ArrowUpRight,
+  ArrowUp,
+  ArrowDown,
   BarChart3,
 } from 'lucide-react';
-import { dashboardApi, referenceApi } from '@/api/client';
+import { dashboardApi, referenceApi, type KpiTrends, type TrendMetric } from '@/api/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Card } from '@/components/ui/Card';
 import { DataTable, type Column } from '@/components/ui/DataTable';
@@ -97,6 +99,59 @@ function ChartEmpty({ label }: { label: string }) {
   );
 }
 
+// Lightweight inline SVG sparkline (no recharts overhead for tiny charts)
+function Sparkline({ data, color }: { data: number[]; color: string }) {
+  if (!data || data.length < 2) return null;
+  const w = 72;
+  const h = 26;
+  const pad = 2;
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const pts = data.map((v, i) => {
+    const x = pad + (i / (data.length - 1)) * (w - 2 * pad);
+    const y = h - pad - ((v - min) / range) * (h - 2 * pad);
+    return { x, y };
+  });
+  const line = pts.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const last = pts[pts.length - 1];
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="overflow-visible" aria-hidden="true">
+      <polyline
+        points={line}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      <circle cx={last.x} cy={last.y} r={2} fill={color} />
+    </svg>
+  );
+}
+
+// Prev-period delta chip. goodIfUp=false means lower-is-better (e.g. SLA variance).
+function Delta({ metric, goodIfUp }: { metric: TrendMetric; goodIfUp: boolean }) {
+  const { current, previous } = metric;
+  if (current === previous) return null;
+  const diff = current - previous;
+  const pct = previous !== 0 ? Math.round((Math.abs(diff) / Math.abs(previous)) * 100) : 100;
+  const up = diff > 0;
+  const good = up === goodIfUp;
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-0.5 text-xs font-semibold tabular-nums',
+        good ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400',
+      )}
+      title={`${current} vs ${previous} (previous 30 days)`}
+    >
+      {up ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+      {pct}%
+    </span>
+  );
+}
+
 export default function DashboardPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
@@ -123,6 +178,7 @@ export default function DashboardPage() {
   }, []);
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [trends, setTrends] = useState<KpiTrends | null>(null);
   const [entitySplit, setEntitySplit] = useState<EntitySplitEntry[]>([]);
   const [slaTrend, setSlaTrend] = useState<SlaTrendEntry[]>([]);
   const [categoryBreakdown, setCategoryBreakdown] = useState<CategoryEntry[]>([]);
@@ -139,15 +195,17 @@ export default function DashboardPage() {
       else setLoading(true);
       const eid = selectedEntity || undefined;
       try {
-        const [s, es, st, cb, ag, ta] = await Promise.all([
+        const [s, es, st, cb, ag, ta, tr] = await Promise.all([
           dashboardApi.getStats(eid),
           dashboardApi.getEntitySplit(eid),
           dashboardApi.getSlaTrend(eid),
           dashboardApi.getCategoryBreakdown(eid),
           dashboardApi.getAging(eid),
           dashboardApi.getTeamAccountability(eid),
+          dashboardApi.getKpiTrends(eid),
         ]);
         setStats(s as DashboardStats);
+        setTrends(tr as KpiTrends | null);
 
         const statusLabel: Record<string, string> = {
           IN_PROGRESS: t('inProgress'),
@@ -273,6 +331,9 @@ export default function DashboardPage() {
     icon: React.ReactNode;
     color: string;
     onClick?: () => void;
+    trend?: TrendMetric;
+    goodIfUp?: boolean;
+    spark?: string;
   }[] = stats
     ? [
         {
@@ -295,18 +356,27 @@ export default function DashboardPage() {
           icon: <CheckCircle className="h-6 w-6" />,
           color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10',
           onClick: () => drill('COMPLETED'),
+          trend: trends?.completed,
+          goodIfUp: true,
+          spark: '#10b981',
         },
         {
           label: t('avgSlaVariance'),
           value: `${stats.avgSlaVariance >= 0 ? '+' : ''}${stats.avgSlaVariance.toFixed(1)}d`,
           icon: <Gauge className="h-6 w-6" />,
           color: 'text-violet-600 bg-violet-50 dark:bg-violet-500/10',
+          trend: trends?.avgSlaVariance,
+          goodIfUp: false,
+          spark: '#8b5cf6',
         },
         {
           label: t('onTimeRate'),
           value: `${stats.onTimeRate.toFixed(0)}%`,
           icon: <TrendingUp className="h-6 w-6" />,
           color: 'text-teal-600 bg-teal-50 dark:bg-teal-500/10',
+          trend: trends?.onTimeRate,
+          goodIfUp: true,
+          spark: '#14b8a6',
         },
         {
           label: t('onHoldDependent'),
@@ -460,14 +530,22 @@ export default function DashboardPage() {
                   >
                     {kpi.icon}
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xl font-bold tabular-nums tracking-tight text-gray-900 sm:text-2xl dark:text-gray-50">
-                      {kpi.value}
-                    </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xl font-bold tabular-nums tracking-tight text-gray-900 sm:text-2xl dark:text-gray-50">
+                        {kpi.value}
+                      </p>
+                      {kpi.trend && <Delta metric={kpi.trend} goodIfUp={kpi.goodIfUp ?? true} />}
+                    </div>
                     <p className="truncate text-xs font-medium text-gray-500 dark:text-gray-400">
                       {kpi.label}
                     </p>
                   </div>
+                  {kpi.trend && kpi.spark && (
+                    <div className="hidden shrink-0 self-center sm:block">
+                      <Sparkline data={kpi.trend.series} color={kpi.spark} />
+                    </div>
+                  )}
                   {clickable && (
                     <ArrowUpRight className="absolute end-3 top-3 h-4 w-4 text-gray-300 opacity-0 transition-opacity group-hover:opacity-100 dark:text-gray-600" />
                   )}
