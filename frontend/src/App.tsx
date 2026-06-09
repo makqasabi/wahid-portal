@@ -25,7 +25,16 @@ function RouteFallback() {
 function App() {
   return (
     <>
-      <Toaster position="top-right" />
+      <Toaster
+        position="top-right"
+        gutter={10}
+        toastOptions={{
+          duration: 4000,
+          className: 'app-toast',
+          success: { iconTheme: { primary: '#10b981', secondary: '#ffffff' }, duration: 3000 },
+          error: { iconTheme: { primary: '#f43f5e', secondary: '#ffffff' }, duration: 5000 },
+        }}
+      />
       <Suspense fallback={<RouteFallback />}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

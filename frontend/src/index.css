@@ -152,4 +152,21 @@
     @apply absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent dark:via-white/5;
     animation: shimmer 1.6s infinite;
   }
+
+  /* Branded react-hot-toast toasts (override the library's inline styles) */
+  .app-toast {
+    border-radius: 1rem !important;
+    border: 1px solid theme('colors.gray.200') !important;
+    background: #ffffff !important;
+    color: theme('colors.gray.800') !important;
+    box-shadow: 0 14px 40px -16px rgb(16 24 40 / 0.22) !important;
+    font-size: 0.875rem !important;
+    padding: 10px 14px !important;
+    max-width: 380px !important;
+  }
+  .dark .app-toast {
+    background: theme('colors.gray.900') !important;
+    color: theme('colors.gray.100') !important;
+    border-color: theme('colors.gray.800') !important;
+  }
 }
