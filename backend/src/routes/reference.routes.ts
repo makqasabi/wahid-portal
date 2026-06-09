@@ -14,7 +14,7 @@ router.get("/clients", async (_req: ScopedRequest, res: Response) => {
     const clients = await prisma.client.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, aliases: true, isActive: true },
+      select: { id: true, name: true, nameEn: true, aliases: true, isActive: true },
     });
     res.json({ data: clients });
   } catch (err) {
@@ -29,7 +29,7 @@ router.get("/categories", async (_req: ScopedRequest, res: Response) => {
     const categories = await prisma.category.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, isActive: true },
+      select: { id: true, name: true, nameEn: true, isActive: true },
     });
     res.json({ data: categories });
   } catch (err) {
@@ -43,7 +43,7 @@ router.get("/teams", async (_req: ScopedRequest, res: Response) => {
   try {
     const teams = await prisma.team.findMany({
       orderBy: { name: "asc" },
-      include: { entity: { select: { id: true, name: true } } },
+      include: { entity: { select: { id: true, name: true, nameEn: true } } },
     });
     res.json({ data: teams });
   } catch (err) {
@@ -57,7 +57,7 @@ router.get("/entities", async (_req: ScopedRequest, res: Response) => {
   try {
     const entities = await prisma.entity.findMany({
       orderBy: { name: "asc" },
-      select: { id: true, name: true, fullName: true },
+      select: { id: true, name: true, nameEn: true, fullName: true },
     });
     res.json({ data: entities });
   } catch (err) {
@@ -77,10 +77,11 @@ router.get("/users", async (_req: ScopedRequest, res: Response) => {
       select: {
         id: true,
         fullName: true,
+        fullNameEn: true,
         entityId: true,
         teamId: true,
-        entity: { select: { id: true, name: true } },
-        team: { select: { id: true, name: true } },
+        entity: { select: { id: true, name: true, nameEn: true } },
+        team: { select: { id: true, name: true, nameEn: true } },
       },
       orderBy: { fullName: "asc" },
     });

@@ -15,6 +15,7 @@ router.use(requireMinRole("ENTITY_ADMIN"));
 
 const createClientSchema = z.object({
   name: z.string().min(1, "Client name is required"),
+  nameEn: z.string().optional(),
   aliases: z.array(z.string()).default([]),
 });
 
@@ -24,10 +25,22 @@ const updateClientSchema = createClientSchema.partial().extend({
 
 const createCategorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
+  nameEn: z.string().optional(),
 });
 
 const updateCategorySchema = createCategorySchema.partial().extend({
   isActive: z.boolean().optional(),
+});
+
+const createTeamSchema = z.object({
+  name: z.string().min(1, "Team name is required"),
+  nameEn: z.string().optional(),
+  entityId: z.string().uuid(),
+});
+
+const updateTeamSchema = z.object({
+  name: z.string().min(1).optional(),
+  nameEn: z.string().nullable().optional(),
 });
 
 const auditLogFilterSchema = z.object({
@@ -120,7 +133,7 @@ router.post(
   validateBody(createClientSchema),
   async (req: ScopedRequest, res: Response) => {
     try {
-      const { name, aliases } = req.body;
+      const { name, nameEn, aliases } = req.body;
 
       const existing = await prisma.client.findUnique({ where: { name } });
       if (existing) {
@@ -129,7 +142,7 @@ router.post(
       }
 
       const client = await prisma.client.create({
-        data: { name, aliases: JSON.stringify(aliases) },
+        data: { name, nameEn: nameEn ?? null, aliases: JSON.stringify(aliases) },
       });
       res.status(201).json(client);
     } catch (err) {
@@ -218,7 +231,7 @@ router.post(
   validateBody(createCategorySchema),
   async (req: ScopedRequest, res: Response) => {
     try {
-      const { name } = req.body;
+      const { name, nameEn } = req.body;
 
       const existing = await prisma.category.findUnique({ where: { name } });
       if (existing) {
@@ -226,7 +239,7 @@ router.post(
         return;
       }
 
-      const category = await prisma.category.create({ data: { name } });
+      const category = await prisma.category.create({ data: { name, nameEn: nameEn ?? null } });
       res.status(201).json(category);
     } catch (err) {
       console.error("POST /admin/categories error:", err);
@@ -301,7 +314,7 @@ router.get("/teams", async (req: ScopedRequest, res: Response) => {
     const teams = await prisma.team.findMany({
       where,
       orderBy: { name: "asc" },
-      include: { entity: { select: { id: true, name: true } } },
+      include: { entity: { select: { id: true, name: true, nameEn: true } } },
     });
     res.json({ data: teams });
   } catch (err) {
@@ -309,6 +322,83 @@ router.get("/teams", async (req: ScopedRequest, res: Response) => {
     res.status(500).json({ error: "Failed to fetch teams" });
   }
 });
+
+router.post(
+  "/teams",
+  validateBody(createTeamSchema),
+  async (req: ScopedRequest, res: Response) => {
+    try {
+      const { name, nameEn, entityId } = req.body;
+      const { role, entityId: actorEntityId } = req.user!;
+
+      if (role !== "SUPER_ADMIN" && entityId !== actorEntityId) {
+        res.status(403).json({ error: "You can only create teams in your own entity" });
+        return;
+      }
+
+      const entity = await prisma.entity.findUnique({ where: { id: entityId }, select: { id: true } });
+      if (!entity) {
+        res.status(400).json({ error: "Invalid entity" });
+        return;
+      }
+
+      const existing = await prisma.team.findFirst({ where: { name, entityId } });
+      if (existing) {
+        res.status(409).json({ error: "A team with this name already exists in this entity" });
+        return;
+      }
+
+      const team = await prisma.team.create({
+        data: { name, nameEn: nameEn ?? null, entityId },
+        include: { entity: { select: { id: true, name: true, nameEn: true } } },
+      });
+      res.status(201).json(team);
+    } catch (err) {
+      console.error("POST /admin/teams error:", err);
+      res.status(500).json({ error: "Failed to create team" });
+    }
+  },
+);
+
+router.patch(
+  "/teams/:id",
+  validateBody(updateTeamSchema),
+  async (req: ScopedRequest, res: Response) => {
+    try {
+      const team = await prisma.team.findUnique({ where: { id: req.params.id } });
+      if (!team) {
+        res.status(404).json({ error: "Team not found" });
+        return;
+      }
+
+      const { role, entityId: actorEntityId } = req.user!;
+      if (role !== "SUPER_ADMIN" && team.entityId !== actorEntityId) {
+        res.status(403).json({ error: "You can only edit teams in your own entity" });
+        return;
+      }
+
+      if (req.body.name && req.body.name !== team.name) {
+        const dup = await prisma.team.findFirst({
+          where: { name: req.body.name, entityId: team.entityId, NOT: { id: team.id } },
+        });
+        if (dup) {
+          res.status(409).json({ error: "A team with this name already exists in this entity" });
+          return;
+        }
+      }
+
+      const updated = await prisma.team.update({
+        where: { id: team.id },
+        data: req.body,
+        include: { entity: { select: { id: true, name: true, nameEn: true } } },
+      });
+      res.json(updated);
+    } catch (err) {
+      console.error("PATCH /admin/teams/:id error:", err);
+      res.status(500).json({ error: "Failed to update team" });
+    }
+  },
+);
 
 // ── Entities ───────────────────────────────────────────────
 
@@ -332,6 +422,9 @@ router.get(
 );
 
 const updateEntitySchema = z.object({
+  name: z.string().min(1).optional(),
+  nameEn: z.string().nullable().optional(),
+  fullName: z.string().min(1).optional(),
   escalationContactId: z.string().uuid().nullable().optional(),
   slaWarningDays: z.number().int().min(0).max(365).optional(),
   slaEscalationDays: z.number().int().min(0).max(365).optional(),

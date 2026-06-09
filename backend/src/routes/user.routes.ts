@@ -121,7 +121,7 @@ router.post(
     try {
       const userRole = req.user!.role;
       const userEntityId = req.user!.entityId;
-      const { fullName, email, entityId, teamId, role } = req.body;
+      const { fullName, fullNameEn, email, entityId, teamId, role } = req.body;
 
       // Entity admin can only invite to their own entity
       if (userRole === "ENTITY_ADMIN" && entityId !== userEntityId) {
@@ -161,7 +161,7 @@ router.post(
       const passwordHash = await bcrypt.hash(tempPassword, 12);
 
       const user = await prisma.user.create({
-        data: { fullName, email, passwordHash, entityId, teamId, role },
+        data: { fullName, fullNameEn: fullNameEn ?? null, email, passwordHash, entityId, teamId, role },
         select: {
           id: true,
           fullName: true,
