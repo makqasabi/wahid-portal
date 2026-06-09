@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select, type SelectOption } from '@/components/ui/Select';
+import { Combobox } from '@/components/ui/Combobox';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { isMeenaEntity, localName } from '@/lib/utils';
@@ -296,42 +297,42 @@ export default function TicketCreatePage() {
         <Card title={t('details')}>
           <div data-tour="create-assignments" className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {/* Category */}
-            <Select
+            <Combobox
               label={t('categoryLabel')}
               placeholder={t('selectCategory')}
               options={categoryOptions}
               value={form.categoryId}
-              onChange={(e) => handleChange('categoryId', e.target.value)}
+              onChange={(v) => handleChange('categoryId', v)}
               error={errors.categoryId}
             />
 
             {/* Client */}
-            <Select
+            <Combobox
               label={t('clientLabel')}
               placeholder={t('selectClient')}
               options={clientOptions}
               value={form.clientId}
-              onChange={(e) => handleChange('clientId', e.target.value)}
+              onChange={(v) => handleChange('clientId', v)}
               error={errors.clientId}
             />
 
             {/* Owner */}
-            <Select
+            <Combobox
               label={t('ownerLabel')}
               placeholder={t('selectOwner')}
               options={userOptions}
               value={form.ownerId}
-              onChange={(e) => handleChange('ownerId', e.target.value)}
+              onChange={(v) => handleChange('ownerId', v)}
               error={errors.ownerId}
             />
 
             {/* Owner Team */}
-            <Select
+            <Combobox
               label={t('ownerTeamLabel')}
               placeholder={t('selectTeam')}
               options={teamOptions}
               value={form.ownerTeamId}
-              onChange={(e) => handleChange('ownerTeamId', e.target.value)}
+              onChange={(v) => handleChange('ownerTeamId', v)}
               error={errors.ownerTeamId}
             />
 
@@ -358,21 +359,21 @@ export default function TicketCreatePage() {
             </div>
 
             {/* Support */}
-            <Select
+            <Combobox
               label={t('supportOptional')}
               placeholder={t('selectSupport')}
               options={[{ value: '', label: t('none') }, ...userOptions]}
               value={form.supportId}
-              onChange={(e) => handleChange('supportId', e.target.value)}
+              onChange={(v) => handleChange('supportId', v)}
             />
 
             {/* Submitting Team */}
-            <Select
+            <Combobox
               label={t('submittingTeam')}
               placeholder={t('selectTeam')}
               options={teamOptions}
               value={form.submittingTeamId}
-              onChange={(e) => handleChange('submittingTeamId', e.target.value)}
+              onChange={(v) => handleChange('submittingTeamId', v)}
               disabled={!hasMinRole('TEAM_LEAD')}
             />
 
