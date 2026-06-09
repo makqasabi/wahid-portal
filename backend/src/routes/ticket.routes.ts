@@ -15,6 +15,7 @@ import {
   createNotification,
   notifyTicketParticipants,
 } from "../services/notification.service.js";
+import { ticketVisibilityWhere, canViewTicket } from "../utils/visibility.js";
 import type { Prisma } from "@prisma/client";
 
 const router = Router();
@@ -22,18 +23,7 @@ const router = Router();
 // ── Helpers ─────────────────────────────────────────────────
 
 function visibilityFilter(req: ScopedRequest): Prisma.TicketWhereInput {
-  if (req.user?.role === "SUPER_ADMIN") return {};
-  const userId = req.user!.id;
-  const entityId = req.user!.entityId;
-  return {
-    OR: [
-      { ownerEntityId: entityId },
-      { submittingEntityId: entityId },
-      { ownerId: userId },
-      { supportId: userId },
-      { submittedById: userId },
-    ],
-  };
+  return ticketVisibilityWhere(req.user!);
 }
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
@@ -173,20 +163,10 @@ router.get("/:id", async (req: ScopedRequest, res: Response) => {
       return;
     }
 
-    // Visibility check
-    if (req.user?.role !== "SUPER_ADMIN") {
-      const userId = req.user!.id;
-      const entityId = req.user!.entityId;
-      const canSee =
-        ticket.ownerEntityId === entityId ||
-        ticket.submittingEntityId === entityId ||
-        ticket.ownerId === userId ||
-        ticket.supportId === userId ||
-        ticket.submittedById === userId;
-      if (!canSee) {
-        res.status(403).json({ error: "Access denied to this ticket" });
-        return;
-      }
+    // Visibility check (role-based)
+    if (!canViewTicket(req.user!, ticket)) {
+      res.status(403).json({ error: "Access denied to this ticket" });
+      return;
     }
 
     // Fetch comments with internal note filtering

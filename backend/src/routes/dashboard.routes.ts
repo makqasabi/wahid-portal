@@ -2,35 +2,29 @@ import { Router } from "express";
 import type { Response } from "express";
 import prisma from "../config/prisma.js";
 import type { ScopedRequest } from "../middleware/entityScope.js";
+import { ticketVisibilityWhere } from "../utils/visibility.js";
 import type { Prisma } from "@prisma/client";
 
 const router = Router();
 
 // ── Scope helper ────────────────────────────────────────────
+// Each role's dashboard reflects exactly the tickets they can see
+// (same visibility model as the ticket list). Super admin may also
+// narrow to a single entity via the ?entityId tab.
 
 function entityWhere(req: ScopedRequest): Prisma.TicketWhereInput {
   const filterEntityId = req.query.entityId as string | undefined;
 
-  if (req.user?.role === "SUPER_ADMIN") {
-    // Super admin can filter by a specific entity or see all
-    if (filterEntityId) {
-      return {
-        OR: [
-          { ownerEntityId: filterEntityId },
-          { submittingEntityId: filterEntityId },
-        ],
-      };
-    }
-    return {};
+  if (req.user?.role === "SUPER_ADMIN" && filterEntityId) {
+    return {
+      OR: [
+        { ownerEntityId: filterEntityId },
+        { submittingEntityId: filterEntityId },
+      ],
+    };
   }
 
-  // Non-super-admin: always scoped to own entity
-  return {
-    OR: [
-      { ownerEntityId: req.user!.entityId },
-      { submittingEntityId: req.user!.entityId },
-    ],
-  };
+  return ticketVisibilityWhere(req.user!);
 }
 
 // ── GET /stats — KPI stats ──────────────────────────────────
