@@ -9,6 +9,7 @@ import prisma from "../config/prisma.js";
 import { authenticateToken, generateAccessToken, generateRefreshToken } from "../middleware/auth.js";
 import type { AuthRequest, TokenPayload } from "../middleware/auth.js";
 import { authLimiter } from "../middleware/rateLimiter.js";
+import { sendEmail } from "../services/mail.service.js";
 import { validateBody } from "../middleware/validate.js";
 import {
   loginSchema,
@@ -141,6 +142,20 @@ router.post("/login", authLimiter, validateBody(loginSchema), async (req, res: R
         res.status(401).json({ error: "Invalid 2FA code" });
         return;
       }
+    }
+
+    // ── Enforce MFA for admins (opt-in) ──
+    if (
+      config.ENFORCE_ADMIN_MFA &&
+      (user.role === "SUPER_ADMIN" || user.role === "ENTITY_ADMIN") &&
+      !user.mfaEnabled
+    ) {
+      await logLoginAttempt(email, false, req, "mfa_required");
+      res.status(403).json({
+        error:
+          "Two-factor authentication is required for admin accounts. Please enrol in 2FA (ask another administrator to enable it for you) before signing in.",
+      });
+      return;
     }
 
     // ── Login success — reset lockout ──
@@ -497,7 +512,13 @@ router.post(
         data: { userId: user.id, token, expiresAt },
       });
 
-      console.log(`[Password Reset] User: ${user.fullName} (${email}) — Token: ${token.slice(0, 8)}… — Expires: ${expiresAt.toISOString()}`);
+      // Deliver the reset code by email (never log the token).
+      await sendEmail({
+        to: email,
+        subject: "Wahid Portal — password reset code",
+        text: `Hi ${user.fullName},\n\nYour password reset code is: ${token}\n\nIt expires in 15 minutes. If you didn't request this, ignore this email.\n\n— Wahid Portal`,
+        html: `<p>Hi ${user.fullName},</p><p>Your password reset code is:</p><p style="font-size:18px;font-weight:600;letter-spacing:1px;">${token}</p><p>It expires in 15 minutes. If you didn't request this, you can ignore this email.</p><p style="color:#888;font-size:12px;">— Wahid Portal</p>`,
+      });
 
       res.json({ message: successMsg });
     } catch (error) {

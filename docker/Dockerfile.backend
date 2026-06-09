@@ -18,7 +18,7 @@ COPY backend/tsconfig.json ./
 # ── Stage 2: Production runtime ────────────────────────────
 FROM node:20-alpine
 
-RUN apk add --no-cache tini
+RUN apk add --no-cache tini postgresql-client
 
 WORKDIR /app
 
@@ -29,13 +29,15 @@ COPY --from=build /app/package.json ./
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/tsconfig.json ./
 
-# Create uploads directory
-RUN mkdir -p /app/uploads && chown -R node:node /app
+# Create uploads + backups directories
+RUN mkdir -p /app/uploads /backups && chown -R node:node /app /backups
 
 USER node
 
 EXPOSE 3001
 
-# Run migrations then start the server
+# On start: take a safety DB backup, apply schema WITHOUT data loss, then run.
+# `prisma db push` (no --accept-data-loss) fails closed on a destructive change
+# rather than silently dropping data.
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["sh", "-c", "npx prisma db push --accept-data-loss && npx tsx src/index.ts"]
+CMD ["sh", "-c", "(pg_dump \"$DATABASE_URL\" > /backups/pre-deploy-$(date +%Y%m%d-%H%M%S).sql 2>/backups/last-backup.err && echo '[backup] pre-deploy dump OK') || echo '[backup] WARNING: pre-deploy dump failed, continuing'; npx prisma db push && npx tsx src/index.ts"]

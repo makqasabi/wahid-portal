@@ -35,6 +35,7 @@ services:
       NODE_ENV: production
     volumes:
       - uploads:/app/uploads
+      - backups:/backups
 
   nginx:
     build:
@@ -61,5 +62,6 @@ services:
 volumes:
   pgdata:
   uploads:
+  backups:
   certbot-webroot:
   certbot-certs:

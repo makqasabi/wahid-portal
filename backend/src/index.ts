@@ -28,7 +28,7 @@ app.set("trust proxy", 1);
 // ── Global middleware ────────────────────────────────────────
 app.use(helmet());
 app.use(cors({
-  origin: [config.FRONTEND_URL, "http://95.177.171.54", "https://wahid.live"],
+  origin: [config.FRONTEND_URL, "https://wahid.live", "https://www.wahid.live"],
   credentials: true,
 }));
 app.use(express.json({ limit: "10mb" }));

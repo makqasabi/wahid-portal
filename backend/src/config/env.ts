@@ -33,6 +33,10 @@ export const config = {
   JWT_SECRET: required("JWT_SECRET"),
   JWT_REFRESH_SECRET: required("JWT_REFRESH_SECRET"),
 
+  // When true, ENTITY_ADMIN/SUPER_ADMIN cannot log in until they enrol in 2FA.
+  // Default OFF — enrol admins first, then enable, to avoid lockout.
+  ENFORCE_ADMIN_MFA: flag("ENFORCE_ADMIN_MFA"),
+
   // ── Outbound email (SMTP) ──────────────────────────────────
   SMTP_HOST: optional("SMTP_HOST", ""),
   SMTP_PORT: parseInt(optional("SMTP_PORT", "587"), 10),
