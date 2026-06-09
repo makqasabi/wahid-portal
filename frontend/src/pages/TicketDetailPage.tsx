@@ -36,7 +36,7 @@ import { Modal } from '@/components/ui/Modal';
 import { StatusBadge } from '@/components/tickets/StatusBadge';
 import { PriorityBadge } from '@/components/tickets/PriorityBadge';
 import { SlaBadge } from '@/components/tickets/SlaBadge';
-import { formatDate, formatDateTime, isMeenaEntity, localName } from '@/lib/utils';
+import { formatDate, formatDateTime, isMeenaEntity, localName, userName } from '@/lib/utils';
 import type { Ticket, Comment, AuditLog, Progress } from '@/types';
 
 type ActivityTab = 'discussion' | 'notes' | 'attachments' | 'history';
@@ -392,13 +392,13 @@ export default function TicketDetailPage() {
                 {localName(ticket.client, i18n.language)}
               </DetailRow>
               <DetailRow icon={<UserIcon className="h-3.5 w-3.5" />} label={t('submittedBy')}>
-                {ticket.submittedBy?.fullName ?? '-'}
+                {userName(ticket.submittedBy, i18n.language)}
               </DetailRow>
               <DetailRow icon={<Users className="h-3.5 w-3.5" />} label={t('submittingTeam')}>
                 {localName(ticket.submittingTeam, i18n.language)}
               </DetailRow>
               <DetailRow icon={<UserIcon className="h-3.5 w-3.5" />} label={t('owner')}>
-                {ticket.owner?.fullName ?? '-'}
+                {userName(ticket.owner, i18n.language)}
               </DetailRow>
               <DetailRow icon={<Users className="h-3.5 w-3.5" />} label={t('ownerTeam')}>
                 {localName(ticket.ownerTeam, i18n.language)}
@@ -414,7 +414,7 @@ export default function TicketDetailPage() {
               </DetailRow>
               {ticket.support && (
                 <DetailRow icon={<UserIcon className="h-3.5 w-3.5" />} label={t('support')}>
-                  {ticket.support.fullName}
+                  {userName(ticket.support, i18n.language)}
                 </DetailRow>
               )}
               <DetailRow icon={<Calendar className="h-3.5 w-3.5" />} label={t('dueDate')}>
@@ -747,7 +747,7 @@ function CommentBubble({
   isInternal?: boolean;
 }) {
   const { t, i18n } = useTranslation();
-  const name = comment.author?.fullName ?? t('comments.unknown');
+  const name = comment.author ? userName(comment.author, i18n.language) : t('comments.unknown');
   const initials =
     name
       .split(' ')

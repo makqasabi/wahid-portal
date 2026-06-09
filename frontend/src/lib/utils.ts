@@ -88,3 +88,16 @@ export function localName(obj: { name?: string; nameEn?: string | null } | undef
   if (lang === 'ar' || !obj.nameEn) return obj.name ?? '-';
   return obj.nameEn;
 }
+
+/**
+ * Localized person name: English name in the English UI when present,
+ * otherwise the default full name.
+ */
+export function userName(
+  user: { fullName?: string; fullNameEn?: string | null } | undefined | null,
+  lang: string,
+): string {
+  if (!user) return '-';
+  if (lang === 'ar' || !user.fullNameEn) return user.fullName ?? '-';
+  return user.fullNameEn;
+}

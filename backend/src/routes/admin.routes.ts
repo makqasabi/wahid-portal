@@ -21,6 +21,7 @@ const createClientSchema = z.object({
 
 const updateClientSchema = createClientSchema.partial().extend({
   isActive: z.boolean().optional(),
+  nameEn: z.string().nullable().optional(),
 });
 
 const createCategorySchema = z.object({
@@ -30,6 +31,7 @@ const createCategorySchema = z.object({
 
 const updateCategorySchema = createCategorySchema.partial().extend({
   isActive: z.boolean().optional(),
+  nameEn: z.string().nullable().optional(),
 });
 
 const createTeamSchema = z.object({

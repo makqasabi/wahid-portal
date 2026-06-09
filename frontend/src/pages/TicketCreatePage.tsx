@@ -12,7 +12,7 @@ import { Select, type SelectOption } from '@/components/ui/Select';
 import { Combobox } from '@/components/ui/Combobox';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
-import { isMeenaEntity, localName } from '@/lib/utils';
+import { isMeenaEntity, localName, userName } from '@/lib/utils';
 import type { User, Client, Category, Team, Priority, Ticket } from '@/types';
 
 interface FormData {
@@ -218,7 +218,7 @@ export default function TicketCreatePage() {
 
   const userOptions: SelectOption[] = users.map((u) => ({
     value: u.id,
-    label: `${u.fullName}${u.team ? ` - ${localName(u.team, i18n.language)}` : ''}`,
+    label: `${userName(u, i18n.language)}${u.team ? ` - ${localName(u.team, i18n.language)}` : ''}`,
   }));
 
   // Get the entity for the owner entity badge

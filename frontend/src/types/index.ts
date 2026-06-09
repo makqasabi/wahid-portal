@@ -26,6 +26,7 @@ export type NotificationType =
 export interface Entity {
   id: string;
   name: string;
+  nameEn?: string | null;
   fullName: string;
   logoUrl?: string;
   slaWarningDays: number;
@@ -37,6 +38,7 @@ export interface Entity {
 export interface Team {
   id: string;
   name: string;
+  nameEn?: string | null;
   entityId: string;
   entity?: Entity;
 }
@@ -44,6 +46,7 @@ export interface Team {
 export interface User {
   id: string;
   fullName: string;
+  fullNameEn?: string | null;
   email: string;
   entityId: string;
   teamId: string;
@@ -58,6 +61,7 @@ export interface User {
 export interface Client {
   id: string;
   name: string;
+  nameEn?: string | null;
   aliases: string[];
   isActive: boolean;
 }
@@ -65,6 +69,7 @@ export interface Client {
 export interface Category {
   id: string;
   name: string;
+  nameEn?: string | null;
   isActive: boolean;
 }
 

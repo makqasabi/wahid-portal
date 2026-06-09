@@ -218,11 +218,11 @@ export const adminApi = {
   getEntities: () =>
     api.get('/admin/entities').then((r) => r.data.data ?? r.data) as Promise<Entity[]>,
 
-  updateEntity: (id: string, data: { escalationContactId?: string | null; slaWarningDays?: number; slaEscalationDays?: number }) =>
+  updateEntity: (id: string, data: { name?: string; nameEn?: string | null; fullName?: string; escalationContactId?: string | null; slaWarningDays?: number; slaEscalationDays?: number }) =>
     api.patch<Entity>(`/admin/entities/${id}`, data).then((r) => r.data),
 
-  createClient: (name: string) =>
-    api.post<Client>('/admin/clients', { name }).then((r) => r.data),
+  createClient: (data: { name: string; nameEn?: string }) =>
+    api.post<Client>('/admin/clients', data).then((r) => r.data),
 
   updateClient: (id: string, data: Partial<Client>) =>
     api.patch<Client>(`/admin/clients/${id}`, data).then((r) => r.data),
@@ -230,14 +230,20 @@ export const adminApi = {
   deleteClient: (id: string) =>
     api.delete(`/admin/clients/${id}`).then((r) => r.data),
 
-  createCategory: (name: string) =>
-    api.post<Category>('/admin/categories', { name }).then((r) => r.data),
+  createCategory: (data: { name: string; nameEn?: string }) =>
+    api.post<Category>('/admin/categories', data).then((r) => r.data),
 
   updateCategory: (id: string, data: Partial<Category>) =>
     api.patch<Category>(`/admin/categories/${id}`, data).then((r) => r.data),
 
   deleteCategory: (id: string) =>
     api.delete(`/admin/categories/${id}`).then((r) => r.data),
+
+  createTeam: (data: { name: string; nameEn?: string; entityId: string }) =>
+    api.post<Team>('/admin/teams', data).then((r) => r.data),
+
+  updateTeam: (id: string, data: { name?: string; nameEn?: string | null }) =>
+    api.patch<Team>(`/admin/teams/${id}`, data).then((r) => r.data),
 };
 
 // --- Reference Data (any authenticated user) ---

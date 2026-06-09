@@ -4,6 +4,7 @@ import { Navigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
   Users,
+  Users2,
   Building2,
   Tag,
   ScrollText,
@@ -21,11 +22,10 @@ import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { Pagination } from '@/components/ui/Pagination';
-import { Spinner } from '@/components/ui/Spinner';
-import { cn, formatDateTime, localName } from '@/lib/utils';
+import { cn, formatDateTime, localName, userName } from '@/lib/utils';
 import type { User, Client, Category, AuditLog, Team, Entity, Role } from '@/types';
 
-type AdminTab = 'users' | 'clients' | 'categories' | 'entities' | 'audit';
+type AdminTab = 'users' | 'clients' | 'categories' | 'teams' | 'entities' | 'audit';
 
 const ROLE_KEYS: Record<string, string> = {
   SUPER_ADMIN: 'admin.roles.superAdmin',
@@ -59,6 +59,7 @@ export default function AdminPage() {
     { key: 'users', label: t('admin.tabs.users'), icon: <Users className="h-4 w-4" /> },
     { key: 'clients', label: t('admin.tabs.clients'), icon: <Building2 className="h-4 w-4" /> },
     { key: 'categories', label: t('admin.tabs.categories'), icon: <Tag className="h-4 w-4" /> },
+    { key: 'teams', label: t('admin.tabs.teams'), icon: <Users2 className="h-4 w-4" /> },
     ...(isSuperAdmin ? [{ key: 'entities' as const, label: t('admin.tabs.entities'), icon: <Building2 className="h-4 w-4" /> }] : []),
     { key: 'audit', label: t('admin.tabs.audit'), icon: <ScrollText className="h-4 w-4" /> },
   ];
@@ -97,6 +98,9 @@ export default function AdminPage() {
       )}
       {activeTab === 'clients' && <ClientsTab isSuperAdmin={!!isSuperAdmin} />}
       {activeTab === 'categories' && <CategoriesTab isSuperAdmin={!!isSuperAdmin} />}
+      {activeTab === 'teams' && (
+        <TeamsTab isSuperAdmin={!!isSuperAdmin} currentUserEntityId={currentUser?.entityId} />
+      )}
       {activeTab === 'entities' && <EntitiesTab />}
       {activeTab === 'audit' && <AuditLogTab />}
     </div>
@@ -123,6 +127,7 @@ function UsersTab({
   // Invite form state
   const [inviteForm, setInviteForm] = useState({
     fullName: '',
+    fullNameEn: '',
     email: '',
     password: '',
     role: 'MEMBER' as Role,
@@ -186,6 +191,7 @@ function UsersTab({
     try {
       await usersApi.invite({
         fullName: inviteForm.fullName,
+        fullNameEn: inviteForm.fullNameEn || undefined,
         email: inviteForm.email,
         password: inviteForm.password,
         role: inviteForm.role,
@@ -194,7 +200,7 @@ function UsersTab({
       });
       toast.success(t('admin.userInvited'));
       setInviteOpen(false);
-      setInviteForm({ fullName: '', email: '', password: '', role: 'MEMBER', entityId: '', teamId: '' });
+      setInviteForm({ fullName: '', fullNameEn: '', email: '', password: '', role: 'MEMBER', entityId: '', teamId: '' });
       await fetchUsers();
     } catch {
       toast.error(t('admin.failedInvite'));
@@ -241,6 +247,7 @@ function UsersTab({
       await usersApi.update(editUser.id, {
         role: editUser.role,
         teamId: editUser.teamId,
+        fullNameEn: editUser.fullNameEn ?? null,
       });
       toast.success(t('admin.userUpdated'));
       setEditUser(null);
@@ -278,7 +285,7 @@ function UsersTab({
       );
 
   const columns: Column<User>[] = [
-    { key: 'fullName', header: t('admin.columns.name'), sortable: true },
+    { key: 'fullName', header: t('admin.columns.name'), sortable: true, render: (row: User) => userName(row, i18n.language) },
     { key: 'email', header: t('admin.columns.email') },
     {
       key: 'entity',
@@ -366,6 +373,11 @@ function UsersTab({
             onChange={(e) => setInviteForm((f) => ({ ...f, fullName: e.target.value }))}
           />
           <Input
+            label={t('admin.fullNameEn')}
+            value={inviteForm.fullNameEn}
+            onChange={(e) => setInviteForm((f) => ({ ...f, fullNameEn: e.target.value }))}
+          />
+          <Input
             label={t('admin.emailRequired')}
             type="email"
             value={inviteForm.email}
@@ -419,6 +431,13 @@ function UsersTab({
       >
         {editUser && (
           <div className="space-y-4">
+            <Input
+              label={t('admin.fullNameEn')}
+              value={editUser.fullNameEn ?? ''}
+              onChange={(e) =>
+                setEditUser((prev) => (prev ? { ...prev, fullNameEn: e.target.value } : null))
+              }
+            />
             <Select
               label={t('role')}
               options={allowedRoleOptions}
@@ -514,9 +533,11 @@ function ClientsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newNameEn, setNewNameEn] = useState('');
   const [saving, setSaving] = useState(false);
   const [editClient, setEditClient] = useState<Client | null>(null);
   const [editName, setEditName] = useState('');
+  const [editNameEn, setEditNameEn] = useState('');
 
   const fetchClients = useCallback(async () => {
     setLoading(true);
@@ -557,7 +578,7 @@ function ClientsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     if (!editClient || !editName.trim()) return;
     setSaving(true);
     try {
-      await adminApi.updateClient(editClient.id, { name: editName.trim() });
+      await adminApi.updateClient(editClient.id, { name: editName.trim(), nameEn: editNameEn.trim() || null });
       toast.success(t('admin.clientUpdated'));
       setEditClient(null);
       await fetchClients();
@@ -604,7 +625,7 @@ function ClientsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             header: '',
             render: (row: Client) => (
               <div className="flex gap-1">
-                <Button variant="ghost" size="sm" onClick={() => { setEditClient(row); setEditName(row.name); }}>
+                <Button variant="ghost" size="sm" onClick={() => { setEditClient(row); setEditName(row.name); setEditNameEn(row.nameEn ?? ''); }}>
                   <Edit2 className="h-3.5 w-3.5" />
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => handleToggleActive(row)}>
@@ -652,6 +673,11 @@ function ClientsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
           />
+          <Input
+            label={t('admin.nameEn')}
+            value={newNameEn}
+            onChange={(e) => setNewNameEn(e.target.value)}
+          />
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setAddOpen(false)}>
               {t('cancel')}
@@ -662,10 +688,11 @@ function ClientsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                 if (!newName.trim()) return;
                 setSaving(true);
                 try {
-                  await adminApi.createClient(newName.trim());
+                  await adminApi.createClient({ name: newName.trim(), nameEn: newNameEn.trim() || undefined });
                   toast.success(t('admin.clientAdded'));
                   setAddOpen(false);
                   setNewName('');
+                  setNewNameEn('');
                   await fetchClients();
                 } catch {
                   toast.error(t('admin.failedAddClient'));
@@ -687,6 +714,11 @@ function ClientsTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             label={t('admin.clientName')}
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
+          />
+          <Input
+            label={t('admin.nameEn')}
+            value={editNameEn}
+            onChange={(e) => setEditNameEn(e.target.value)}
           />
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setEditClient(null)}>
@@ -710,9 +742,11 @@ function CategoriesTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [newName, setNewName] = useState('');
+  const [newNameEn, setNewNameEn] = useState('');
   const [saving, setSaving] = useState(false);
   const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [editName, setEditName] = useState('');
+  const [editNameEn, setEditNameEn] = useState('');
 
   const fetchCategories = useCallback(async () => {
     setLoading(true);
@@ -745,7 +779,7 @@ function CategoriesTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
     if (!editCategory || !editName.trim()) return;
     setSaving(true);
     try {
-      await adminApi.updateCategory(editCategory.id, { name: editName.trim() });
+      await adminApi.updateCategory(editCategory.id, { name: editName.trim(), nameEn: editNameEn.trim() || null });
       toast.success(t('admin.categoryUpdated'));
       setEditCategory(null);
       await fetchCategories();
@@ -784,7 +818,7 @@ function CategoriesTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             header: '',
             render: (row: Category) => (
               <div className="flex gap-1">
-                <Button variant="ghost" size="sm" onClick={() => { setEditCategory(row); setEditName(row.name); }}>
+                <Button variant="ghost" size="sm" onClick={() => { setEditCategory(row); setEditName(row.name); setEditNameEn(row.nameEn ?? ''); }}>
                   <Edit2 className="h-3.5 w-3.5" />
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => handleToggleActive(row)}>
@@ -832,6 +866,11 @@ function CategoriesTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
           />
+          <Input
+            label={t('admin.nameEn')}
+            value={newNameEn}
+            onChange={(e) => setNewNameEn(e.target.value)}
+          />
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setAddOpen(false)}>
               {t('cancel')}
@@ -842,10 +881,11 @@ function CategoriesTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
                 if (!newName.trim()) return;
                 setSaving(true);
                 try {
-                  await adminApi.createCategory(newName.trim());
+                  await adminApi.createCategory({ name: newName.trim(), nameEn: newNameEn.trim() || undefined });
                   toast.success(t('admin.categoryAdded'));
                   setAddOpen(false);
                   setNewName('');
+                  setNewNameEn('');
                   await fetchCategories();
                 } catch {
                   toast.error(t('admin.failedAddCategory'));
@@ -868,6 +908,11 @@ function CategoriesTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
           />
+          <Input
+            label={t('admin.nameEn')}
+            value={editNameEn}
+            onChange={(e) => setEditNameEn(e.target.value)}
+          />
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={() => setEditCategory(null)}>
               {t('cancel')}
@@ -875,6 +920,166 @@ function CategoriesTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
             <Button loading={saving} onClick={handleUpdate}>
               {t('save')}
             </Button>
+          </div>
+        </div>
+      </Modal>
+    </Card>
+  );
+}
+
+/* ============================= Teams Tab ============================= */
+
+function TeamsTab({
+  isSuperAdmin,
+  currentUserEntityId,
+}: {
+  isSuperAdmin: boolean;
+  currentUserEntityId?: string;
+}) {
+  const { t, i18n } = useTranslation();
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [entities, setEntities] = useState<Entity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [addOpen, setAddOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ name: '', nameEn: '', entityId: '' });
+  const [editTeam, setEditTeam] = useState<Team | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editNameEn, setEditNameEn] = useState('');
+
+  const fetchTeams = useCallback(async () => {
+    setLoading(true);
+    try {
+      setTeams(await adminApi.getTeams());
+    } catch {
+      toast.error(t('admin.failedLoadTeams'));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchTeams(); }, [fetchTeams]);
+  useEffect(() => { adminApi.getEntities().then(setEntities).catch(() => {}); }, []);
+
+  useEffect(() => {
+    if (!isSuperAdmin && currentUserEntityId && !form.entityId) {
+      setForm((f) => ({ ...f, entityId: currentUserEntityId }));
+    }
+  }, [isSuperAdmin, currentUserEntityId, form.entityId]);
+
+  const entityOptions: SelectOption[] = (isSuperAdmin
+    ? entities
+    : entities.filter((e) => e.id === currentUserEntityId)
+  ).map((e) => ({ value: e.id, label: localName(e, i18n.language) }));
+
+  const handleAdd = async () => {
+    if (!form.name.trim() || !form.entityId) {
+      toast.error(t('admin.fillRequired'));
+      return;
+    }
+    setSaving(true);
+    try {
+      await adminApi.createTeam({ name: form.name.trim(), nameEn: form.nameEn.trim() || undefined, entityId: form.entityId });
+      toast.success(t('admin.teamAdded'));
+      setAddOpen(false);
+      setForm({ name: '', nameEn: '', entityId: isSuperAdmin ? '' : (currentUserEntityId ?? '') });
+      await fetchTeams();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? t('admin.failedAddTeam'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!editTeam || !editName.trim()) return;
+    setSaving(true);
+    try {
+      await adminApi.updateTeam(editTeam.id, { name: editName.trim(), nameEn: editNameEn.trim() || null });
+      toast.success(t('admin.teamUpdated'));
+      setEditTeam(null);
+      await fetchTeams();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error ?? t('admin.failedUpdateTeam'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openEdit = (row: Team) => { setEditTeam(row); setEditName(row.name); setEditNameEn(row.nameEn ?? ''); };
+
+  const columns: Column<Team>[] = [
+    { key: 'name', header: t('admin.columns.name'), sortable: true, render: (row: Team) => localName(row, i18n.language) },
+    { key: 'entity', header: t('admin.columns.entity'), render: (row: Team) => localName(row.entity, i18n.language) },
+    {
+      key: 'actions',
+      header: '',
+      render: (row: Team) => (
+        <Button variant="ghost" size="sm" onClick={() => openEdit(row)}>
+          <Edit2 className="h-3.5 w-3.5" />
+        </Button>
+      ),
+    },
+  ];
+
+  return (
+    <Card
+      title={t('admin.tabs.teams')}
+      actions={
+        <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setAddOpen(true)}>
+          {t('admin.addTeam')}
+        </Button>
+      }
+    >
+      <DataTable
+        columns={columns}
+        data={teams as unknown as Record<string, unknown>[]}
+        loading={loading}
+        emptyMessage={t('admin.noTeamsFound')}
+        mobileCard={(row) => {
+          const tm = row as unknown as Team;
+          return (
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate font-medium text-gray-900 dark:text-gray-100">{localName(tm, i18n.language)}</p>
+                <p className="truncate text-xs text-gray-500 dark:text-gray-400">{localName(tm.entity, i18n.language)}</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => openEdit(tm)}>
+                <Edit2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          );
+        }}
+      />
+
+      {/* Add Modal */}
+      <Modal open={addOpen} onOpenChange={setAddOpen} title={t('admin.addTeam')}>
+        <div className="space-y-4">
+          <Input label={t('admin.teamName')} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+          <Input label={t('admin.nameEn')} value={form.nameEn} onChange={(e) => setForm((f) => ({ ...f, nameEn: e.target.value }))} />
+          <Select
+            label={t('entity')}
+            placeholder={t('admin.selectEntity')}
+            options={entityOptions}
+            value={form.entityId}
+            onChange={(e) => setForm((f) => ({ ...f, entityId: e.target.value }))}
+            disabled={!isSuperAdmin}
+          />
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setAddOpen(false)}>{t('cancel')}</Button>
+            <Button loading={saving} onClick={handleAdd}>{t('admin.add')}</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal open={!!editTeam} onOpenChange={(open) => { if (!open) setEditTeam(null); }} title={t('admin.editTeam')}>
+        <div className="space-y-4">
+          <Input label={t('admin.teamName')} value={editName} onChange={(e) => setEditName(e.target.value)} />
+          <Input label={t('admin.nameEn')} value={editNameEn} onChange={(e) => setEditNameEn(e.target.value)} />
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setEditTeam(null)}>{t('cancel')}</Button>
+            <Button loading={saving} onClick={handleUpdate}>{t('save')}</Button>
           </div>
         </div>
       </Modal>
@@ -890,7 +1095,7 @@ function EntitiesTab() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [editEntity, setEditEntity] = useState<Entity | null>(null);
-  const [editForm, setEditForm] = useState<{ escalationContactId: string; slaWarningDays: string; slaEscalationDays: string }>({ escalationContactId: '', slaWarningDays: '', slaEscalationDays: '' });
+  const [editForm, setEditForm] = useState<{ name: string; nameEn: string; escalationContactId: string; slaWarningDays: string; slaEscalationDays: string }>({ name: '', nameEn: '', escalationContactId: '', slaWarningDays: '', slaEscalationDays: '' });
   const [saving, setSaving] = useState(false);
 
   const fetchAll = useCallback(async () => {
@@ -914,6 +1119,8 @@ function EntitiesTab() {
   const openEdit = (e: Entity) => {
     setEditEntity(e);
     setEditForm({
+      name: e.name,
+      nameEn: e.nameEn ?? '',
       escalationContactId: e.escalationContactId ?? '',
       slaWarningDays: String(e.slaWarningDays),
       slaEscalationDays: String(e.slaEscalationDays),
@@ -925,6 +1132,8 @@ function EntitiesTab() {
     setSaving(true);
     try {
       await adminApi.updateEntity(editEntity.id, {
+        name: editForm.name.trim() || undefined,
+        nameEn: editForm.nameEn.trim() || null,
         escalationContactId: editForm.escalationContactId || null,
         slaWarningDays: Number(editForm.slaWarningDays),
         slaEscalationDays: Number(editForm.slaEscalationDays),
@@ -985,6 +1194,18 @@ function EntitiesTab() {
       >
         {editEntity && (
           <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Input
+                label={t('admin.entityName')}
+                value={editForm.name}
+                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+              />
+              <Input
+                label={t('admin.nameEn')}
+                value={editForm.nameEn}
+                onChange={(e) => setEditForm((f) => ({ ...f, nameEn: e.target.value }))}
+              />
+            </div>
             <Select
               label={t('admin.escalationContact')}
               options={transfereeOptions}

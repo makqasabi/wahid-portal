@@ -14,7 +14,7 @@ import { PriorityBadge } from '@/components/tickets/PriorityBadge';
 import { SlaBadge } from '@/components/tickets/SlaBadge';
 import { TicketFilters } from '@/components/tickets/TicketFilters';
 import { Badge } from '@/components/ui/Badge';
-import { cn, formatDate, truncate, isMeenaEntity, localName } from '@/lib/utils';
+import { cn, formatDate, truncate, isMeenaEntity, localName, userName } from '@/lib/utils';
 import type { Ticket, Progress } from '@/types';
 import toast from 'react-hot-toast';
 
@@ -133,7 +133,7 @@ export default function TicketListPage() {
     {
       key: 'owner',
       header: t('owner'),
-      render: (row: Ticket) => row.owner?.fullName ?? '-',
+      render: (row: Ticket) => userName(row.owner, i18n.language),
     },
     {
       key: 'dueDate',
@@ -279,7 +279,7 @@ export default function TicketListPage() {
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
                   <span className="truncate">{localName(tk.client, i18n.language)}</span>
-                  <span className="truncate">{tk.owner?.fullName ?? '-'}</span>
+                  <span className="truncate">{userName(tk.owner, i18n.language)}</span>
                   <span
                     className={cn(
                       isOverdue(tk.dueDate, tk.progress) && 'font-semibold text-red-600',
