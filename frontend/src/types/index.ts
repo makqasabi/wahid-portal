@@ -47,6 +47,7 @@ export interface User {
   id: string;
   fullName: string;
   fullNameEn?: string | null;
+  phone?: string | null;
   email: string;
   entityId: string;
   teamId: string;

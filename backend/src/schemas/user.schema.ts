@@ -12,6 +12,7 @@ const roleEnum = z.enum([
 export const createUserSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   fullNameEn: z.string().optional(),
+  phone: z.string().nullable().optional(),
   email: z.string().email("Invalid email address"),
   password: z
     .string()
@@ -30,6 +31,7 @@ export const updateUserSchema = createUserSchema.partial();
 export const inviteUserSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   fullNameEn: z.string().optional(),
+  phone: z.string().nullable().optional(),
   email: z.string().email("Invalid email address"),
   entityId: z.string().uuid(),
   teamId: z.string().uuid(),

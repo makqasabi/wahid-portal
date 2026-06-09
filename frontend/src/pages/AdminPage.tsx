@@ -128,6 +128,7 @@ function UsersTab({
   const [inviteForm, setInviteForm] = useState({
     fullName: '',
     fullNameEn: '',
+    phone: '',
     email: '',
     password: '',
     role: 'MEMBER' as Role,
@@ -192,6 +193,7 @@ function UsersTab({
       await usersApi.invite({
         fullName: inviteForm.fullName,
         fullNameEn: inviteForm.fullNameEn || undefined,
+        phone: inviteForm.phone || undefined,
         email: inviteForm.email,
         password: inviteForm.password,
         role: inviteForm.role,
@@ -200,7 +202,7 @@ function UsersTab({
       });
       toast.success(t('admin.userInvited'));
       setInviteOpen(false);
-      setInviteForm({ fullName: '', fullNameEn: '', email: '', password: '', role: 'MEMBER', entityId: '', teamId: '' });
+      setInviteForm({ fullName: '', fullNameEn: '', phone: '', email: '', password: '', role: 'MEMBER', entityId: '', teamId: '' });
       await fetchUsers();
     } catch {
       toast.error(t('admin.failedInvite'));
@@ -248,6 +250,7 @@ function UsersTab({
         role: editUser.role,
         teamId: editUser.teamId,
         fullNameEn: editUser.fullNameEn ?? null,
+        phone: editUser.phone ?? null,
       });
       toast.success(t('admin.userUpdated'));
       setEditUser(null);
@@ -378,6 +381,12 @@ function UsersTab({
             onChange={(e) => setInviteForm((f) => ({ ...f, fullNameEn: e.target.value }))}
           />
           <Input
+            label={t('admin.phone')}
+            value={inviteForm.phone}
+            onChange={(e) => setInviteForm((f) => ({ ...f, phone: e.target.value }))}
+            placeholder="+9665…"
+          />
+          <Input
             label={t('admin.emailRequired')}
             type="email"
             value={inviteForm.email}
@@ -436,6 +445,14 @@ function UsersTab({
               value={editUser.fullNameEn ?? ''}
               onChange={(e) =>
                 setEditUser((prev) => (prev ? { ...prev, fullNameEn: e.target.value } : null))
+              }
+            />
+            <Input
+              label={t('admin.phone')}
+              value={editUser.phone ?? ''}
+              placeholder="+9665…"
+              onChange={(e) =>
+                setEditUser((prev) => (prev ? { ...prev, phone: e.target.value } : null))
               }
             />
             <Select

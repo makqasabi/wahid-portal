@@ -50,14 +50,16 @@ router.get("/", async (req: ScopedRequest, res: Response) => {
       select: {
         id: true,
         fullName: true,
+        fullNameEn: true,
+        phone: true,
         email: true,
         role: true,
         isActive: true,
         entityId: true,
         teamId: true,
         createdAt: true,
-        entity: { select: { id: true, name: true } },
-        team: { select: { id: true, name: true } },
+        entity: { select: { id: true, name: true, nameEn: true } },
+        team: { select: { id: true, name: true, nameEn: true } },
       },
       orderBy: { fullName: "asc" },
     });
@@ -81,6 +83,8 @@ router.get("/:id", async (req: ScopedRequest, res: Response) => {
       select: {
         id: true,
         fullName: true,
+        fullNameEn: true,
+        phone: true,
         email: true,
         role: true,
         isActive: true,
@@ -88,8 +92,8 @@ router.get("/:id", async (req: ScopedRequest, res: Response) => {
         createdAt: true,
         entityId: true,
         teamId: true,
-        entity: { select: { id: true, name: true } },
-        team: { select: { id: true, name: true } },
+        entity: { select: { id: true, name: true, nameEn: true } },
+        team: { select: { id: true, name: true, nameEn: true } },
       },
     });
 
@@ -121,7 +125,7 @@ router.post(
     try {
       const userRole = req.user!.role;
       const userEntityId = req.user!.entityId;
-      const { fullName, fullNameEn, email, entityId, teamId, role } = req.body;
+      const { fullName, fullNameEn, phone, email, entityId, teamId, role } = req.body;
 
       // Entity admin can only invite to their own entity
       if (userRole === "ENTITY_ADMIN" && entityId !== userEntityId) {
@@ -161,7 +165,7 @@ router.post(
       const passwordHash = await bcrypt.hash(tempPassword, 12);
 
       const user = await prisma.user.create({
-        data: { fullName, fullNameEn: fullNameEn ?? null, email, passwordHash, entityId, teamId, role },
+        data: { fullName, fullNameEn: fullNameEn ?? null, phone: phone ?? null, email, passwordHash, entityId, teamId, role },
         select: {
           id: true,
           fullName: true,
