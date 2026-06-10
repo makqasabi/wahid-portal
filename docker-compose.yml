@@ -33,9 +33,12 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-wahid_portal}?schema=public
       NODE_ENV: production
+      LOG_DIR: /logs
+      LOG_RETENTION_DAYS: ${LOG_RETENTION_DAYS:-90}
     volumes:
       - uploads:/app/uploads
       - backups:/backups
+      - logs:/logs
 
   nginx:
     build:
@@ -63,5 +66,6 @@ volumes:
   pgdata:
   uploads:
   backups:
+  logs:
   certbot-webroot:
   certbot-certs:

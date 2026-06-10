@@ -5,6 +5,7 @@ import prisma from "../config/prisma.js";
 import type { ScopedRequest } from "../middleware/entityScope.js";
 import { requireMinRole, requireRole } from "../middleware/rbac.js";
 import { validateBody, validateQuery } from "../middleware/validate.js";
+import { queryLogs, logStats } from "../services/logStore.js";
 
 const router = Router();
 
@@ -475,6 +476,50 @@ router.patch(
     } catch (err) {
       console.error("PATCH /admin/entities/:id error:", err);
       res.status(500).json({ error: "Failed to update entity" });
+    }
+  },
+);
+
+// ── System logs (SQLite log store) — SUPER_ADMIN only ───────
+// These are infrastructure/security logs spanning all entities, so unlike the
+// per-ticket audit trail they are restricted to the super admin.
+
+const systemLogFilterSchema = z.object({
+  level: z.enum(["debug", "info", "warn", "error"]).optional(),
+  category: z.string().optional(),
+  q: z.string().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(500).default(100),
+});
+
+router.get(
+  "/system-logs",
+  requireRole("SUPER_ADMIN"),
+  validateQuery(systemLogFilterSchema),
+  async (req: ScopedRequest, res: Response) => {
+    try {
+      const q = req.query as Record<string, any>;
+      const page: number = q.page ?? 1;
+      const limit: number = q.limit ?? 100;
+      const { total, rows } = queryLogs({
+        level: q.level,
+        category: q.category,
+        q: q.q,
+        from: q.from,
+        to: q.to,
+        limit,
+        offset: (page - 1) * limit,
+      });
+      res.json({
+        data: rows,
+        stats: logStats(),
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      });
+    } catch (err) {
+      console.error("GET /admin/system-logs error:", err);
+      res.status(500).json({ error: "Failed to read system logs" });
     }
   },
 );

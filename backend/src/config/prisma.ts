@@ -1,6 +1,44 @@
 import { PrismaClient } from "@prisma/client";
+import { writeLog } from "../services/logStore.js";
 
 const base = new PrismaClient();
+
+/** Mirror a security/audit DB write into the SQLite log store. Never throws. */
+function teeAudit(data: any) {
+  try {
+    writeLog({
+      category: "audit",
+      level: "info",
+      message: `${data.action}${data.fieldName ? ` ${data.fieldName}` : ""}`,
+      userId: data.userId ?? null,
+      meta: {
+        ticketId: data.ticketId,
+        action: data.action,
+        fieldName: data.fieldName ?? undefined,
+        oldValue: data.oldValue ?? undefined,
+        newValue: data.newValue ?? undefined,
+      },
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
+function teeLoginAttempt(data: any) {
+  try {
+    writeLog({
+      category: "auth",
+      level: data.success ? "info" : "warn",
+      message: `login ${data.success ? "success" : "failed"}: ${data.email}`,
+      userEmail: data.email ?? null,
+      ip: data.ipAddress ?? null,
+      userAgent: data.userAgent ?? null,
+      meta: { success: data.success, reason: data.reason ?? undefined },
+    });
+  } catch {
+    /* ignore */
+  }
+}
 
 /** Unscoped client — bypasses the soft-delete filter. Use sparingly (e.g., display-ID generation, undelete). */
 export const prismaUnscoped = base;
@@ -37,6 +75,28 @@ const prisma = base.$extends({
           return result;
         }
         return query(args);
+      },
+    },
+    // Mirror the security/audit trail into the SQLite log store at the single
+    // source of truth, so it's captured no matter which route wrote it.
+    auditLog: {
+      async create({ args, query }) {
+        const r = await query(args);
+        teeAudit(args.data);
+        return r;
+      },
+      async createMany({ args, query }) {
+        const r = await query(args);
+        const rows = Array.isArray(args.data) ? args.data : [args.data];
+        for (const d of rows) teeAudit(d);
+        return r;
+      },
+    },
+    loginAttempt: {
+      async create({ args, query }) {
+        const r = await query(args);
+        teeLoginAttempt(args.data);
+        return r;
       },
     },
   },

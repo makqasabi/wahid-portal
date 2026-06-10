@@ -12,6 +12,7 @@ import type {
   Category,
   Team,
   Entity,
+  SystemLogResponse,
 } from '@/types';
 
 const api = axios.create({
@@ -205,6 +206,11 @@ export const usersApi = {
 export const adminApi = {
   getAuditLogs: (filters?: Record<string, unknown>) =>
     api.get<PaginatedResponse<AuditLog>>('/admin/audit-logs', { params: filters }).then((r) => r.data),
+
+  getSystemLogs: (filters?: Record<string, unknown>) =>
+    api
+      .get<SystemLogResponse>('/admin/system-logs', { params: filters })
+      .then((r) => r.data),
 
   getClients: () =>
     api.get('/admin/clients').then((r) => r.data.data ?? r.data) as Promise<Client[]>,

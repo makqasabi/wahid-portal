@@ -163,6 +163,38 @@ export interface PaginatedResponse<T> {
   };
 }
 
+export interface SystemLog {
+  id: number;
+  ts: string;
+  level: 'debug' | 'info' | 'warn' | 'error';
+  category: string;
+  message: string | null;
+  method: string | null;
+  path: string | null;
+  status: number | null;
+  duration_ms: number | null;
+  user_id: string | null;
+  user_email: string | null;
+  ip: string | null;
+  user_agent: string | null;
+  meta: string | null;
+}
+
+export interface SystemLogResponse {
+  data: SystemLog[];
+  stats: {
+    ready: boolean;
+    total: number;
+    categories: { category: string; c: number }[];
+  };
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 export interface DashboardStats {
   totalOpen: number;
   overdue: number;

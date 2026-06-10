@@ -87,4 +87,11 @@ export const config = {
 
   FRONTEND_URL: optional("FRONTEND_URL", "http://localhost:5173"),
   UPLOAD_DIR: optional("UPLOAD_DIR", "./uploads"),
+
+  // ── Logging (durable SQLite log store) ─────────────────────
+  // Directory holding wahid-logs.db. In Docker this is the /logs volume.
+  // Empty → logStore falls back to <cwd>/logs.
+  LOG_DIR: optional("LOG_DIR", ""),
+  // Logs older than this are pruned daily.
+  LOG_RETENTION_DAYS: parseInt(optional("LOG_RETENTION_DAYS", "90"), 10),
 } as const;

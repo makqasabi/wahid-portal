@@ -8,6 +8,7 @@ import {
   Building2,
   Tag,
   ScrollText,
+  Terminal,
   Plus,
   Edit2,
   UserMinus,
@@ -23,9 +24,9 @@ import { Badge } from '@/components/ui/Badge';
 import { DataTable, type Column } from '@/components/ui/DataTable';
 import { Pagination } from '@/components/ui/Pagination';
 import { cn, formatDateTime, localName, userName } from '@/lib/utils';
-import type { User, Client, Category, AuditLog, Team, Entity, Role } from '@/types';
+import type { User, Client, Category, AuditLog, Team, Entity, Role, SystemLog } from '@/types';
 
-type AdminTab = 'users' | 'clients' | 'categories' | 'teams' | 'entities' | 'audit';
+type AdminTab = 'users' | 'clients' | 'categories' | 'teams' | 'entities' | 'audit' | 'logs';
 
 const ROLE_KEYS: Record<string, string> = {
   SUPER_ADMIN: 'admin.roles.superAdmin',
@@ -62,6 +63,7 @@ export default function AdminPage() {
     { key: 'teams', label: t('admin.tabs.teams'), icon: <Users2 className="h-4 w-4" /> },
     ...(isSuperAdmin ? [{ key: 'entities' as const, label: t('admin.tabs.entities'), icon: <Building2 className="h-4 w-4" /> }] : []),
     { key: 'audit', label: t('admin.tabs.audit'), icon: <ScrollText className="h-4 w-4" /> },
+    ...(isSuperAdmin ? [{ key: 'logs' as const, label: t('admin.tabs.logs'), icon: <Terminal className="h-4 w-4" /> }] : []),
   ];
 
   return (
@@ -103,6 +105,7 @@ export default function AdminPage() {
       )}
       {activeTab === 'entities' && <EntitiesTab />}
       {activeTab === 'audit' && <AuditLogTab />}
+      {activeTab === 'logs' && <SystemLogsTab />}
     </div>
   );
 }
@@ -1348,6 +1351,216 @@ function AuditLogTab() {
         data={logs as unknown as Record<string, unknown>[]}
         loading={loading}
         emptyMessage={t('admin.noAuditEntries')}
+      />
+
+      {totalPages > 0 && (
+        <div className="mt-4">
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            limit={limit}
+            onPageChange={setPage}
+            onLimitChange={(l) => {
+              setLimit(l);
+              setPage(1);
+            }}
+          />
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/* ============================= System Logs Tab ============================= */
+
+function logLevelClasses(level: string): string {
+  switch (level) {
+    case 'error':
+      return 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300';
+    case 'warn':
+      return 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300';
+    case 'debug':
+      return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400';
+    default:
+      return 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300';
+  }
+}
+
+function SystemLogsTab() {
+  const { t } = useTranslation();
+  const [logs, setLogs] = useState<SystemLog[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [limit, setLimit] = useState(100);
+  const [search, setSearch] = useState('');
+  const [level, setLevel] = useState('');
+  const [category, setCategory] = useState('');
+  const [categories, setCategories] = useState<{ category: string; c: number }[]>([]);
+  const [storedTotal, setStoredTotal] = useState(0);
+
+  const fetchLogs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await adminApi.getSystemLogs({
+        page,
+        limit,
+        ...(search ? { q: search } : {}),
+        ...(level ? { level } : {}),
+        ...(category ? { category } : {}),
+      });
+      setLogs(res.data);
+      setTotalPages(res.pagination.totalPages);
+      setTotal(res.pagination.total);
+      setStoredTotal(res.stats?.total ?? 0);
+      if (res.stats?.categories) setCategories(res.stats.categories);
+    } catch {
+      toast.error(t('admin.logs.failedLoad'));
+    } finally {
+      setLoading(false);
+    }
+  }, [page, limit, search, level, category]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
+
+  const levelOptions: SelectOption[] = [
+    { value: '', label: t('admin.logs.allLevels') },
+    { value: 'error', label: 'error' },
+    { value: 'warn', label: 'warn' },
+    { value: 'info', label: 'info' },
+    { value: 'debug', label: 'debug' },
+  ];
+  const categoryOptions: SelectOption[] = [
+    { value: '', label: t('admin.logs.allCategories') },
+    ...categories.map((c) => ({ value: c.category, label: `${c.category} (${c.c})` })),
+  ];
+
+  const columns: Column<SystemLog>[] = [
+    {
+      key: 'ts',
+      header: t('admin.logs.timestamp'),
+      sortable: true,
+      render: (row: SystemLog) => (
+        <span className="whitespace-nowrap text-xs">{formatDateTime(row.ts)}</span>
+      ),
+    },
+    {
+      key: 'level',
+      header: t('admin.logs.level'),
+      render: (row: SystemLog) => (
+        <span
+          className={cn(
+            'rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase',
+            logLevelClasses(row.level),
+          )}
+        >
+          {row.level}
+        </span>
+      ),
+    },
+    {
+      key: 'category',
+      header: t('admin.logs.category'),
+      render: (row: SystemLog) => <span className="text-xs">{row.category}</span>,
+    },
+    {
+      key: 'request',
+      header: t('admin.logs.request'),
+      render: (row: SystemLog) => {
+        if (!row.method && !row.path) return '-';
+        return (
+          <span className="font-mono text-xs">
+            {row.method}{' '}
+            {row.status != null && (
+              <span
+                className={cn(
+                  row.status >= 500
+                    ? 'text-red-600'
+                    : row.status >= 400
+                      ? 'text-amber-600'
+                      : 'text-green-700',
+                )}
+              >
+                {row.status}
+              </span>
+            )}{' '}
+            <span className="text-gray-500">{row.path}</span>
+            {row.duration_ms != null && (
+              <span className="text-gray-400"> · {row.duration_ms}ms</span>
+            )}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'message',
+      header: t('admin.logs.message'),
+      render: (row: SystemLog) => (
+        <span className="line-clamp-2 block max-w-md break-all text-xs">
+          {row.message ?? row.meta ?? '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'user_email',
+      header: t('admin.logs.user'),
+      render: (row: SystemLog) => <span className="text-xs">{row.user_email ?? '-'}</span>,
+    },
+    {
+      key: 'ip',
+      header: t('admin.logs.ip'),
+      render: (row: SystemLog) => <span className="text-xs">{row.ip ?? '-'}</span>,
+    },
+  ];
+
+  return (
+    <Card
+      title={`${t('admin.tabs.logs')}${
+        storedTotal ? ` · ${t('admin.logs.total')}: ${storedTotal.toLocaleString()}` : ''
+      }`}
+    >
+      <div className="mb-4 flex flex-wrap gap-2">
+        <div className="w-full sm:max-w-xs">
+          <Input
+            placeholder={t('admin.logs.search')}
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
+        <div className="w-32">
+          <Select
+            options={levelOptions}
+            value={level}
+            onChange={(e) => {
+              setLevel(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
+        <div className="w-48">
+          <Select
+            options={categoryOptions}
+            value={category}
+            onChange={(e) => {
+              setCategory(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
+      </div>
+
+      <DataTable
+        columns={columns as unknown as Column<Record<string, unknown>>[]}
+        data={logs as unknown as Record<string, unknown>[]}
+        loading={loading}
+        emptyMessage={t('admin.logs.empty')}
       />
 
       {totalPages > 0 && (

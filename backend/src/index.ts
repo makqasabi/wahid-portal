@@ -6,6 +6,18 @@ import { config } from "./config/env.js";
 import { apiLimiter } from "./middleware/rateLimiter.js";
 import { authenticateToken } from "./middleware/auth.js";
 import { entityScopeMiddleware } from "./middleware/entityScope.js";
+import { httpLogger } from "./middleware/httpLogger.js";
+import {
+  initLogStore,
+  installConsoleCapture,
+  writeLog,
+  pruneOldLogs,
+} from "./services/logStore.js";
+
+// Capture all console output and open the durable SQLite log store as early
+// as possible (writes are buffered until it's ready, so nothing is lost).
+installConsoleCapture();
+void initLogStore();
 
 // ── Route imports ───────────────────────────────────────────
 import authRoutes from "./routes/auth.routes.js";
@@ -33,6 +45,9 @@ app.use(cors({
 }));
 app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
+// Persist every request/response to the SQLite log store (before the rate
+// limiter, so throttled 429s are recorded too).
+app.use(httpLogger);
 app.use(apiLimiter);
 
 // ── Health check (public) ────────────────────────────────────
@@ -64,8 +79,19 @@ import referenceRoutes from "./routes/reference.routes.js";
 app.use("/api/reference", referenceRoutes);
 
 // ── Global error handler ─────────────────────────────────────
-app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+app.use((err: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error("Unhandled error:", err);
+  writeLog({
+    category: "error",
+    level: "error",
+    message: err.message,
+    method: req.method,
+    path: req.originalUrl,
+    status: 500,
+    userId: (req as any).user?.userId ?? (req as any).user?.id ?? null,
+    ip: (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.ip ?? null,
+    meta: { stack: err.stack },
+  });
   res.status(500).json({
     error: "Internal server error",
     ...(process.env.NODE_ENV !== "production" && { message: err.message }),
@@ -80,6 +106,14 @@ import { startImapPoller } from "./services/imap.service.js";
 scheduleSlaChecker();
 scheduleWeeklyReport();
 startImapPoller();
+
+// Prune old logs once shortly after boot (when the store is ready) and daily.
+function runLogPrune() {
+  const n = pruneOldLogs(config.LOG_RETENTION_DAYS);
+  if (n > 0) console.log(`[logStore] pruned ${n} logs older than ${config.LOG_RETENTION_DAYS}d`);
+}
+setTimeout(runLogPrune, 15_000);
+setInterval(runLogPrune, 24 * 60 * 60 * 1000);
 
 // ── Start server ─────────────────────────────────────────────
 app.listen(config.PORT, () => {

@@ -3,9 +3,16 @@ FROM node:20-alpine AS build
 
 WORKDIR /app
 
+# Toolchain for building native modules (better-sqlite3) when no musl prebuilt
+# is available.
+RUN apk add --no-cache python3 make g++
+
 # Install deps first (layer cache)
 COPY backend/package.json backend/package-lock.json* ./
 RUN npm ci --ignore-scripts
+# `npm ci --ignore-scripts` skips better-sqlite3's native build; do it explicitly
+# (downloads a prebuilt musl binary if available, else compiles from source).
+RUN npm rebuild better-sqlite3
 
 # Copy prisma schema and generate client
 COPY backend/prisma ./prisma
@@ -18,7 +25,8 @@ COPY backend/tsconfig.json ./
 # ── Stage 2: Production runtime ────────────────────────────
 FROM node:20-alpine
 
-RUN apk add --no-cache tini postgresql-client
+# tini (init), postgresql-client (pre-deploy backups), libstdc++ (better-sqlite3 runtime)
+RUN apk add --no-cache tini postgresql-client libstdc++
 
 WORKDIR /app
 
@@ -29,8 +37,8 @@ COPY --from=build /app/package.json ./
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/tsconfig.json ./
 
-# Create uploads + backups directories
-RUN mkdir -p /app/uploads /backups && chown -R node:node /app /backups
+# Create uploads + backups + logs directories
+RUN mkdir -p /app/uploads /backups /logs && chown -R node:node /app /backups /logs
 
 USER node
 
