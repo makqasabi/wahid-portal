@@ -5,6 +5,9 @@ dist/
 .env.*.local
 *.db
 *.db-journal
+*.db-wal
+*.db-shm
+logs/
 uploads/
 *.log
 .DS_Store
