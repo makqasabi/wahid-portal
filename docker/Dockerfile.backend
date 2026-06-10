@@ -40,4 +40,4 @@ EXPOSE 3001
 # `prisma db push` (no --accept-data-loss) fails closed on a destructive change
 # rather than silently dropping data.
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["sh", "-c", "(pg_dump \"$DATABASE_URL\" > /backups/pre-deploy-$(date +%Y%m%d-%H%M%S).sql 2>/backups/last-backup.err && echo '[backup] pre-deploy dump OK') || echo '[backup] WARNING: pre-deploy dump failed, continuing'; npx prisma db push && npx tsx src/index.ts"]
+CMD ["sh", "-c", "(pg_dump \"${DATABASE_URL%%\\?*}\" > /backups/pre-deploy-$(date +%Y%m%d-%H%M%S).sql 2>/backups/last-backup.err && echo '[backup] pre-deploy dump OK') || echo '[backup] WARNING: pre-deploy dump failed, continuing'; ls -1t /backups/pre-deploy-*.sql 2>/dev/null | tail -n +15 | xargs -r rm -f; npx prisma db push && npx tsx src/index.ts"]
