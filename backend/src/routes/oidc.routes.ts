@@ -9,8 +9,15 @@ import {
   type TokenPayload,
 } from "../middleware/auth.js";
 import { newPkce, buildAuthUrl, handleCallback, type PkcePair } from "../services/oidc.service.js";
+import { toggleEnabled } from "../services/settings.service.js";
 
 const router = Router();
+
+/** SSO is usable only when env credentials exist AND the admin toggle allows it. */
+async function ssoEnabled(): Promise<boolean> {
+  if (!config.OIDC_ISSUER || !config.OIDC_CLIENT_ID) return false;
+  return toggleEnabled("oidc", config.OIDC_ENABLED);
+}
 
 // ── One-time SSO tickets (in-memory; single backend instance) ──
 // The callback issues a ticket; the SPA exchanges it for the normal
@@ -50,13 +57,13 @@ function frontend(pathAndQuery: string): string {
 }
 
 // ── GET /enabled — public: lets the login page decide whether to show the button
-router.get("/enabled", (_req, res: Response) => {
-  res.json({ enabled: config.OIDC_ENABLED });
+router.get("/enabled", async (_req, res: Response) => {
+  res.json({ enabled: await ssoEnabled() });
 });
 
 // ── GET /login — kick off the OIDC redirect
 router.get("/login", async (_req, res: Response) => {
-  if (!config.OIDC_ENABLED) {
+  if (!(await ssoEnabled())) {
     res.status(404).json({ error: "SSO is not configured" });
     return;
   }
@@ -74,7 +81,7 @@ router.get("/login", async (_req, res: Response) => {
 
 // ── GET /callback — IdP redirects here after (MFA) auth
 router.get("/callback", async (req: Request, res: Response) => {
-  if (!config.OIDC_ENABLED) {
+  if (!(await ssoEnabled())) {
     res.status(404).json({ error: "SSO is not configured" });
     return;
   }

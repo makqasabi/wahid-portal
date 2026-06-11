@@ -6,14 +6,86 @@ export type Role =
   | 'OBSERVER'
   | 'EXTERNAL_STAKEHOLDER';
 
-export type Progress =
-  | 'IN_PROGRESS'
-  | 'DELAYED'
-  | 'COMPLETED'
-  | 'ON_HOLD'
-  | 'DEPENDENT';
+// Statuses/priorities are admin-defined (dynamic workflow) — any key is valid.
+// The historical seed keys (IN_PROGRESS, COMPLETED, …) still exist by default.
+export type Progress = string;
 
-export type Priority = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+export type Priority = string;
+
+export interface WorkflowStatus {
+  key: string;
+  name: string;
+  nameEn?: string | null;
+  color: string;
+  isDefault: boolean;
+  isClosed: boolean;
+  pausesSla: boolean;
+  isOverdueFlag: boolean;
+  transitionsTo: string[];
+}
+
+export interface WorkflowPriority {
+  key: string;
+  name: string;
+  nameEn?: string | null;
+  color: string;
+  isDefault: boolean;
+}
+
+export interface CategoryFieldDef {
+  id: string;
+  key: string;
+  label: string;
+  labelEn?: string | null;
+  type: 'text' | 'textarea' | 'number' | 'date' | 'select';
+  options: string[];
+  required: boolean;
+  sortOrder?: number;
+  isActive?: boolean;
+  valueCount?: number;
+}
+
+export interface TicketFieldValue {
+  id: string;
+  fieldId: string;
+  value: string;
+  field: CategoryFieldDef;
+}
+
+export interface BrandingSettings {
+  portalNameEn: string;
+  portalNameAr: string;
+  fullNameEn: string;
+  fullNameAr: string;
+  taglineEn: string;
+  taglineAr: string;
+  logoUrl: string;
+  primaryColor: string;
+  emailSignature: string;
+  emailButtonColor: string;
+}
+
+export interface AppSettings {
+  branding: BrandingSettings;
+  sla: { defaultWarningDays: number; checkerCron: string };
+  reports: { weeklyEnabled: boolean; weeklyCron: string; weeklyRecipients: string[] };
+  toggles: { whatsapp: boolean | null; imap: boolean | null; oidc: boolean | null };
+  templates: Record<string, { subject: string; body: string }>;
+}
+
+export interface AdminWorkflowStatus extends WorkflowStatus {
+  id: string;
+  sortOrder: number;
+  isActive: boolean;
+  ticketCount: number;
+}
+
+export interface AdminWorkflowPriority extends WorkflowPriority {
+  id: string;
+  sortOrder: number;
+  isActive: boolean;
+  ticketCount: number;
+}
 
 export type NotificationType =
   | 'ASSIGNED'
@@ -105,6 +177,8 @@ export interface Ticket {
   comments?: Comment[];
   attachments?: Attachment[];
   auditLogs?: AuditLog[];
+  fieldValues?: TicketFieldValue[];
+  customFields?: Record<string, string>;
 }
 
 export interface Comment {

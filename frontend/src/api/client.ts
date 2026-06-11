@@ -13,6 +13,13 @@ import type {
   Team,
   Entity,
   SystemLogResponse,
+  WorkflowStatus,
+  WorkflowPriority,
+  CategoryFieldDef,
+  BrandingSettings,
+  AppSettings,
+  AdminWorkflowStatus,
+  AdminWorkflowPriority,
 } from '@/types';
 
 const api = axios.create({
@@ -268,6 +275,70 @@ export const referenceApi = {
 
   getUsers: () =>
     api.get('/reference/users').then((r) => r.data.data ?? r.data) as Promise<User[]>,
+
+  getWorkflow: () =>
+    api
+      .get<{ statuses: WorkflowStatus[]; priorities: WorkflowPriority[] }>('/reference/workflow')
+      .then((r) => r.data),
+
+  getCategoryFields: (categoryId: string) =>
+    api
+      .get(`/reference/categories/${categoryId}/fields`)
+      .then((r) => r.data.data ?? r.data) as Promise<CategoryFieldDef[]>,
+};
+
+// --- Public config (no auth — login page branding) ---
+export const configApi = {
+  getPublic: () =>
+    api.get<{ branding: BrandingSettings }>('/shared/config').then((r) => r.data),
+};
+
+// --- Admin: runtime settings + workflow + custom fields ---
+export const adminConfigApi = {
+  getSettings: () =>
+    api
+      .get<{ settings: AppSettings; defaults: AppSettings }>('/admin/settings')
+      .then((r) => r.data),
+
+  updateSettings: (group: string, value: unknown) =>
+    api
+      .patch<{ settings: AppSettings }>(`/admin/settings/${group}`, value)
+      .then((r) => r.data.settings),
+
+  resetSettings: (group: string) =>
+    api
+      .post<{ settings: AppSettings }>(`/admin/settings/${group}/reset`)
+      .then((r) => r.data.settings),
+
+  runJob: (job: 'sla-check' | 'weekly-report') =>
+    api.post(`/admin/jobs/${job}/run`).then((r) => r.data),
+
+  getStatuses: () =>
+    api.get<AdminWorkflowStatus[]>('/admin/workflow/statuses').then((r) => r.data),
+  createStatus: (data: Partial<AdminWorkflowStatus>) =>
+    api.post<AdminWorkflowStatus>('/admin/workflow/statuses', data).then((r) => r.data),
+  updateStatus: (id: string, data: Partial<AdminWorkflowStatus>) =>
+    api.patch<AdminWorkflowStatus>(`/admin/workflow/statuses/${id}`, data).then((r) => r.data),
+  deleteStatus: (id: string) =>
+    api.delete(`/admin/workflow/statuses/${id}`).then((r) => r.data),
+
+  getPriorities: () =>
+    api.get<AdminWorkflowPriority[]>('/admin/workflow/priorities').then((r) => r.data),
+  createPriority: (data: Partial<AdminWorkflowPriority>) =>
+    api.post<AdminWorkflowPriority>('/admin/workflow/priorities', data).then((r) => r.data),
+  updatePriority: (id: string, data: Partial<AdminWorkflowPriority>) =>
+    api.patch<AdminWorkflowPriority>(`/admin/workflow/priorities/${id}`, data).then((r) => r.data),
+  deletePriority: (id: string) =>
+    api.delete(`/admin/workflow/priorities/${id}`).then((r) => r.data),
+
+  getCategoryFields: (categoryId: string) =>
+    api.get<CategoryFieldDef[]>(`/admin/categories/${categoryId}/fields`).then((r) => r.data),
+  createCategoryField: (categoryId: string, data: Partial<CategoryFieldDef>) =>
+    api.post<CategoryFieldDef>(`/admin/categories/${categoryId}/fields`, data).then((r) => r.data),
+  updateCategoryField: (id: string, data: Partial<CategoryFieldDef>) =>
+    api.patch<CategoryFieldDef>(`/admin/category-fields/${id}`, data).then((r) => r.data),
+  deleteCategoryField: (id: string) =>
+    api.delete(`/admin/category-fields/${id}`).then((r) => r.data),
 };
 
 // --- Notifications ---

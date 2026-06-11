@@ -1,9 +1,24 @@
 import { Router } from "express";
 import type { Request, Response } from "express";
 import prisma from "../config/prisma.js";
+import { getSettings } from "../services/settings.service.js";
 import type { Prisma } from "@prisma/client";
 
 const router = Router();
+
+// ── GET /config — Public branding config (NO AUTH REQUIRED) ─
+// Used by the login page / app shell before sign-in. Branding only —
+// never expose other setting groups here. Declared before /:token.
+
+router.get("/config", async (_req: Request, res: Response) => {
+  try {
+    const { branding } = await getSettings();
+    res.json({ branding });
+  } catch (err) {
+    console.error("GET /shared/config error:", err);
+    res.status(500).json({ error: "Failed to load config" });
+  }
+});
 
 // ── GET /:token — Access shared view (NO AUTH REQUIRED) ─────
 

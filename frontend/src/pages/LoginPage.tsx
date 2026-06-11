@@ -6,6 +6,7 @@ import { authApi, ssoLoginUrl } from '@/api/client';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { Eye, EyeOff, Lock, Mail, ArrowLeft, KeyRound, Globe, Layers, ShieldCheck, Zap } from 'lucide-react';
+import { useBranding, brandTagline } from '@/hooks/useBranding';
 
 type View = 'login' | 'forgot' | 'reset' | '2fa';
 
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
   const { t, i18n } = useTranslation();
+  const branding = useBranding();
 
   const [view, setView] = useState<View>('login');
   const [email, setEmail] = useState('');
@@ -180,18 +182,22 @@ export default function LoginPage() {
         <div className="pointer-events-none absolute inset-0 opacity-[0.06] [background-image:radial-gradient(circle_at_1px_1px,#fff_1px,transparent_0)] [background-size:22px_22px]" />
 
         <div className="relative flex items-center gap-3 text-white">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur">
-            <Layers className="h-6 w-6" />
+          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur">
+            {branding.logoUrl ? (
+              <img src={branding.logoUrl} alt="" className="h-full w-full object-contain p-1.5" />
+            ) : (
+              <Layers className="h-6 w-6" />
+            )}
           </div>
           <div className="leading-tight">
-            <p className="text-2xl font-bold tracking-tight">واحد</p>
-            <p className="text-xs font-medium uppercase tracking-[0.25em] text-white/70">Wahid</p>
+            <p className="text-2xl font-bold tracking-tight">{branding.portalNameAr}</p>
+            <p className="text-xs font-medium uppercase tracking-[0.25em] text-white/70">{branding.portalNameEn}</p>
           </div>
         </div>
 
         <div className="relative text-white">
           <h2 className="max-w-md text-3xl font-bold leading-snug tracking-tight xl:text-4xl">
-            {t('login.tagline')}
+            {brandTagline(branding, i18n.language) || t('login.tagline')}
           </h2>
           <ul className="mt-8 space-y-4">
             {[
@@ -217,11 +223,15 @@ export default function LoginPage() {
         <div className="w-full max-w-md animate-fade-in-up">
           {/* Mobile branding */}
           <div className="mb-8 text-center lg:hidden">
-            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-twn-500 to-twn-700 text-white shadow-lg ring-1 ring-twn-600/20">
-              <Layers className="h-7 w-7" />
+            <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-twn-500 to-twn-700 text-white shadow-lg ring-1 ring-twn-600/20">
+              {branding.logoUrl ? (
+                <img src={branding.logoUrl} alt="" className="h-full w-full object-contain p-1.5" />
+              ) : (
+                <Layers className="h-7 w-7" />
+              )}
             </div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">واحد</h1>
-            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">بوابة العمليات · Wahid</p>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-50">{branding.portalNameAr}</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{branding.fullNameAr} · {branding.portalNameEn}</p>
           </div>
 
           {/* Card */}

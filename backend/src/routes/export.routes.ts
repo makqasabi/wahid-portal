@@ -70,11 +70,22 @@ router.get("/tickets/excel", validateQuery(ticketFilterSchema), async (req: Scop
         support: { select: { fullName: true } },
         ownerEntity: true,
         ownerTeam: true,
+        fieldValues: { include: { field: true } },
       },
     });
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Tickets");
+
+    // One extra column per custom field that appears in the result set
+    const customFieldDefs = new Map<string, string>(); // fieldId -> header
+    for (const t of tickets) {
+      for (const fv of t.fieldValues) {
+        if (!customFieldDefs.has(fv.fieldId)) {
+          customFieldDefs.set(fv.fieldId, fv.field.labelEn || fv.field.label);
+        }
+      }
+    }
 
     sheet.columns = [
       { header: "Display ID", key: "displayId", width: 18 },
@@ -93,6 +104,11 @@ router.get("/tickets/excel", validateQuery(ticketFilterSchema), async (req: Scop
       { header: "Closure Date", key: "closureDate", width: 14 },
       { header: "SLA Variance (days)", key: "slaVarianceDays", width: 18 },
       { header: "Created", key: "createdAt", width: 14 },
+      ...[...customFieldDefs.entries()].map(([id, header]) => ({
+        header,
+        key: `cf_${id}`,
+        width: 20,
+      })),
     ];
 
     // Style header row
@@ -106,7 +122,7 @@ router.get("/tickets/excel", validateQuery(ticketFilterSchema), async (req: Scop
     headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
 
     for (const t of tickets) {
-      sheet.addRow({
+      const row: Record<string, unknown> = {
         displayId: t.displayId,
         actionItem: t.actionItem,
         progress: t.progress,
@@ -123,7 +139,11 @@ router.get("/tickets/excel", validateQuery(ticketFilterSchema), async (req: Scop
         closureDate: t.closureDate ? t.closureDate.toISOString().slice(0, 10) : "",
         slaVarianceDays: t.slaVarianceDays ?? "",
         createdAt: t.createdAt.toISOString().slice(0, 10),
-      });
+      };
+      for (const fv of t.fieldValues) {
+        row[`cf_${fv.fieldId}`] = fv.value;
+      }
+      sheet.addRow(row);
     }
 
     res.setHeader(

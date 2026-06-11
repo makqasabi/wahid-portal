@@ -14,7 +14,6 @@ import {
   PauseCircle,
   PlayCircle,
   RotateCcw,
-  Link2,
   Clock,
   FileText,
   MessageSquare,
@@ -37,69 +36,59 @@ import { StatusBadge } from '@/components/tickets/StatusBadge';
 import { PriorityBadge } from '@/components/tickets/PriorityBadge';
 import { SlaBadge } from '@/components/tickets/SlaBadge';
 import { formatDate, formatDateTime, isMeenaEntity, localName, userName } from '@/lib/utils';
+import { useWorkflow } from '@/hooks/useWorkflow';
 import type { Ticket, Comment, AuditLog, Progress } from '@/types';
 
 type ActivityTab = 'discussion' | 'notes' | 'attachments' | 'history';
 
 interface StatusTransition {
-  labelKey: string;
+  label: string;
   newStatus: Progress;
   icon: React.ReactNode;
   variant: 'primary' | 'secondary' | 'danger' | 'outline';
 }
 
-function getTransitions(
+/**
+ * Transitions come from the admin-defined workflow (each status lists the
+ * statuses reachable from it). Icons/variants derive from semantic flags.
+ * Reopening (closed → open) is gated by canReopen; everything else by
+ * canChangeStatus — mirrors the backend's rules.
+ */
+function buildTransitions(
+  statusByKey: Map<string, import('@/types').WorkflowStatus>,
   progress: Progress,
   canChangeStatus: boolean,
   canReopen: boolean,
+  lang: string,
+  t: (k: string, o?: Record<string, unknown>) => string,
 ): StatusTransition[] {
   if (!canChangeStatus && !canReopen) return [];
+  const from = statusByKey.get(progress);
+  if (!from) return [];
 
-  const transitions: StatusTransition[] = [];
-
-  switch (progress) {
-    case 'IN_PROGRESS':
-      if (canChangeStatus) {
-        transitions.push(
-          { labelKey: 'markComplete', newStatus: 'COMPLETED', icon: <CheckCircle className="h-4 w-4" />, variant: 'primary' },
-          { labelKey: 'putOnHold', newStatus: 'ON_HOLD', icon: <PauseCircle className="h-4 w-4" />, variant: 'outline' },
-          { labelKey: 'markDependent', newStatus: 'DEPENDENT', icon: <Link2 className="h-4 w-4" />, variant: 'outline' },
-        );
-      }
-      break;
-    case 'DELAYED':
-      if (canChangeStatus) {
-        transitions.push(
-          { labelKey: 'markComplete', newStatus: 'COMPLETED', icon: <CheckCircle className="h-4 w-4" />, variant: 'primary' },
-          { labelKey: 'putOnHold', newStatus: 'ON_HOLD', icon: <PauseCircle className="h-4 w-4" />, variant: 'outline' },
-          { labelKey: 'backToInProgress', newStatus: 'IN_PROGRESS', icon: <PlayCircle className="h-4 w-4" />, variant: 'secondary' },
-        );
-      }
-      break;
-    case 'ON_HOLD':
-      if (canChangeStatus) {
-        transitions.push(
-          { labelKey: 'resumeInProgress', newStatus: 'IN_PROGRESS', icon: <PlayCircle className="h-4 w-4" />, variant: 'primary' },
-        );
-      }
-      break;
-    case 'DEPENDENT':
-      if (canChangeStatus) {
-        transitions.push(
-          { labelKey: 'resumeInProgress', newStatus: 'IN_PROGRESS', icon: <PlayCircle className="h-4 w-4" />, variant: 'primary' },
-        );
-      }
-      break;
-    case 'COMPLETED':
-      if (canReopen) {
-        transitions.push(
-          { labelKey: 'reopen', newStatus: 'IN_PROGRESS', icon: <RotateCcw className="h-4 w-4" />, variant: 'danger' },
-        );
-      }
-      break;
+  const out: StatusTransition[] = [];
+  for (const key of from.transitionsTo) {
+    const to = statusByKey.get(key);
+    if (!to) continue;
+    const isReopen = from.isClosed && !to.isClosed;
+    if (isReopen ? !canReopen : !canChangeStatus) continue;
+    const toLabel = lang.startsWith('ar') ? to.name : to.nameEn || to.name;
+    out.push({
+      label: isReopen ? t('reopen') : t('moveToStatus', { status: toLabel }),
+      newStatus: to.key,
+      icon: isReopen ? (
+        <RotateCcw className="h-4 w-4" />
+      ) : to.isClosed ? (
+        <CheckCircle className="h-4 w-4" />
+      ) : to.pausesSla ? (
+        <PauseCircle className="h-4 w-4" />
+      ) : (
+        <PlayCircle className="h-4 w-4" />
+      ),
+      variant: isReopen ? 'danger' : to.isClosed ? 'primary' : 'outline',
+    });
   }
-
-  return transitions;
+  return out;
 }
 
 export default function TicketDetailPage() {
@@ -107,6 +96,7 @@ export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, isEntityAdmin, isSuperAdmin } = useAuth();
+  const workflow = useWorkflow();
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
@@ -175,7 +165,7 @@ export default function TicketDetailPage() {
     setTransitioning(true);
     try {
       await ticketsApi.update(id, { progress: pendingTransition.newStatus });
-      toast.success(t('statusChangedTo', { status: t(pendingTransition.labelKey) }));
+      toast.success(t('statusChangedTo', { status: pendingTransition.label }));
       await fetchTicket();
     } catch (err: any) {
       const msg = err?.response?.data?.error ?? t('failedUpdateStatus');
@@ -287,7 +277,14 @@ export default function TicketDetailPage() {
   const canReopen = isSubmitter || isEntityAdmin || isSuperAdmin;
   const canEditTicket = isOwner || isSubmitter || isEntityAdmin || isSuperAdmin;
 
-  const transitions = getTransitions(ticket.progress, canChangeStatus, canReopen);
+  const transitions = buildTransitions(
+    workflow.statusByKey,
+    ticket.progress,
+    canChangeStatus,
+    canReopen,
+    i18n.language,
+    t,
+  );
   const discussionComments = comments.filter((c) => !c.isInternal);
   const internalNotes = comments.filter((c) => c.isInternal);
 
@@ -363,7 +360,7 @@ export default function TicketDetailPage() {
               setConfirmModal(true);
             }}
           >
-            {t(tr.labelKey)}
+            {tr.label}
           </Button>
         ))}
         </div>
@@ -434,6 +431,20 @@ export default function TicketDetailPage() {
               <DetailRow icon={<History className="h-3.5 w-3.5" />} label={t('updated')}>
                 {formatDateTime(ticket.updatedAt)}
               </DetailRow>
+              {/* Admin-defined custom fields */}
+              {(ticket.fieldValues ?? []).map((fv) => (
+                <DetailRow
+                  key={fv.id}
+                  icon={<Tag className="h-3.5 w-3.5" />}
+                  label={
+                    i18n.language.startsWith('ar')
+                      ? fv.field.label
+                      : fv.field.labelEn || fv.field.label
+                  }
+                >
+                  {fv.field.type === 'date' ? formatDate(fv.value) : fv.value}
+                </DetailRow>
+              ))}
             </dl>
           </Card>
         </div>
@@ -679,7 +690,7 @@ export default function TicketDetailPage() {
         open={confirmModal}
         onOpenChange={setConfirmModal}
         title={t('confirmStatusChange')}
-        description={t('confirmStatusChangeDesc', { status: pendingTransition ? t(pendingTransition.labelKey) : '' })}
+        description={t('confirmStatusChangeDesc', { status: pendingTransition?.label ?? '' })}
       >
         <div className="flex justify-end gap-3 mt-4">
           <Button variant="outline" onClick={() => setConfirmModal(false)}>

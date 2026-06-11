@@ -1,31 +1,21 @@
 import { useTranslation } from 'react-i18next';
 import type { Progress } from '@/types';
-import { Badge, type BadgeProps } from '@/components/ui/Badge';
+import { Badge } from '@/components/ui/Badge';
+import { useWorkflow, workflowLabel } from '@/hooks/useWorkflow';
 
 interface StatusBadgeProps {
   status: Progress;
 }
 
-const statusVariant: Record<Progress, BadgeProps['variant']> = {
-  IN_PROGRESS: 'info',
-  DELAYED: 'danger',
-  COMPLETED: 'success',
-  ON_HOLD: 'neutral',
-  DEPENDENT: 'warning',
-};
-
-const statusKey: Record<Progress, string> = {
-  IN_PROGRESS: 'inProgress',
-  DELAYED: 'delayed',
-  COMPLETED: 'completed',
-  ON_HOLD: 'onHold',
-  DEPENDENT: 'dependent',
-};
-
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const { t } = useTranslation();
-  const variant = statusVariant[status] ?? ('default' as const);
-  const label = t(statusKey[status] ?? status);
+  const { i18n } = useTranslation();
+  const { statusByKey } = useWorkflow();
+  const def = statusByKey.get(status);
+  const label = workflowLabel(def, i18n.language, status);
 
-  return <Badge variant={variant} dot>{label}</Badge>;
+  return (
+    <Badge colorHex={def?.color ?? '#64748b'} dot>
+      {label}
+    </Badge>
+  );
 }

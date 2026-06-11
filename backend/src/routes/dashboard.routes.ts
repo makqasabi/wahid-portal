@@ -3,6 +3,12 @@ import type { Response } from "express";
 import prisma from "../config/prisma.js";
 import type { ScopedRequest } from "../middleware/entityScope.js";
 import { ticketVisibilityWhere } from "../utils/visibility.js";
+import {
+  openStatusKeys,
+  overdueStatusKey,
+  closedStatusKeys,
+  pausedStatusKeys,
+} from "../services/workflow.service.js";
 import type { Prisma } from "@prisma/client";
 
 const router = Router();
@@ -35,18 +41,25 @@ router.get("/stats", async (req: ScopedRequest, res: Response) => {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
+    const [openKeys, overdueKey, closedKeys, pausedKeys] = await Promise.all([
+      openStatusKeys(),
+      overdueStatusKey(),
+      closedStatusKeys(),
+      pausedStatusKeys(),
+    ]);
+
     const [totalOpen, overdue, completedThisMonth, slaAgg, onTimeCount, onHoldDependent] =
       await Promise.all([
         prisma.ticket.count({
-          where: { ...scope, progress: { in: ["IN_PROGRESS", "DELAYED"] } },
+          where: { ...scope, progress: { in: openKeys } },
         }),
-        prisma.ticket.count({
-          where: { ...scope, progress: "DELAYED" },
-        }),
+        overdueKey
+          ? prisma.ticket.count({ where: { ...scope, progress: overdueKey } })
+          : Promise.resolve(0),
         prisma.ticket.count({
           where: {
             ...scope,
-            progress: "COMPLETED",
+            progress: { in: closedKeys },
             closureDate: { gte: monthStart },
           },
         }),
@@ -57,17 +70,17 @@ router.get("/stats", async (req: ScopedRequest, res: Response) => {
         prisma.ticket.count({
           where: {
             ...scope,
-            progress: "COMPLETED",
+            progress: { in: closedKeys },
             slaVarianceDays: { lte: 0 },
           },
         }),
         prisma.ticket.count({
-          where: { ...scope, progress: { in: ["ON_HOLD", "DEPENDENT"] } },
+          where: { ...scope, progress: { in: pausedKeys } },
         }),
       ]);
 
     const totalCompleted = await prisma.ticket.count({
-      where: { ...scope, progress: "COMPLETED" },
+      where: { ...scope, progress: { in: closedKeys } },
     });
 
     const onTimeRate = totalCompleted > 0 ? Math.round((onTimeCount / totalCompleted) * 100) : 0;
@@ -131,7 +144,7 @@ router.get("/sla-trend", async (req: ScopedRequest, res: Response) => {
     const completed = await prisma.ticket.findMany({
       where: {
         ...scope,
-        progress: "COMPLETED",
+        progress: { in: await closedStatusKeys() },
         closureDate: { gte: sixMonthsAgo },
       },
       select: {
@@ -224,6 +237,11 @@ router.get("/category-breakdown", async (req: ScopedRequest, res: Response) => {
 router.get("/team-accountability", async (req: ScopedRequest, res: Response) => {
   try {
     const scope = entityWhere(req);
+    const [openKeySet, overdueKey, closedKeySet] = await Promise.all([
+      openStatusKeys().then((k) => new Set(k)),
+      overdueStatusKey(),
+      closedStatusKeys().then((k) => new Set(k)),
+    ]);
 
     const allTickets = await prisma.ticket.findMany({
       where: scope,
@@ -254,9 +272,9 @@ router.get("/team-accountability", async (req: ScopedRequest, res: Response) => 
       }
       const s = teamStats.get(t.ownerTeamId)!;
 
-      if (t.progress === "IN_PROGRESS" || t.progress === "DELAYED") s.open++;
-      if (t.progress === "DELAYED") s.overdue++;
-      if (t.progress === "COMPLETED") {
+      if (openKeySet.has(t.progress)) s.open++;
+      if (overdueKey && t.progress === overdueKey) s.overdue++;
+      if (closedKeySet.has(t.progress)) {
         s.completed++;
         if (t.slaVarianceDays !== null) {
           s.slaSum += t.slaVarianceDays;
@@ -299,7 +317,7 @@ router.get("/aging", async (req: ScopedRequest, res: Response) => {
     const now = new Date();
 
     const openTickets = await prisma.ticket.findMany({
-      where: { ...scope, progress: { in: ["IN_PROGRESS", "DELAYED"] } },
+      where: { ...scope, progress: { in: await openStatusKeys() } },
       select: { createdAt: true },
     });
 
@@ -343,7 +361,7 @@ router.get("/kpi-trends", async (req: ScopedRequest, res: Response) => {
 
     const [completedRecent, createdRecent] = await Promise.all([
       prisma.ticket.findMany({
-        where: { ...scope, progress: "COMPLETED", closureDate: { gte: since60 } },
+        where: { ...scope, progress: { in: await closedStatusKeys() }, closureDate: { gte: since60 } },
         select: { closureDate: true, slaVarianceDays: true },
       }),
       prisma.ticket.findMany({

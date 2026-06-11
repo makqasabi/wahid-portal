@@ -9,10 +9,14 @@ import {
   Tag,
   ScrollText,
   Terminal,
+  GitBranch,
+  Settings as SettingsIcon,
+  ListPlus,
   Plus,
   Edit2,
   UserMinus,
 } from 'lucide-react';
+import { SettingsTab, WorkflowTab, CategoryFieldsModal } from './admin/ConfigTabs';
 import { adminApi, usersApi } from '@/api/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Card } from '@/components/ui/Card';
@@ -26,7 +30,7 @@ import { Pagination } from '@/components/ui/Pagination';
 import { cn, formatDateTime, localName, userName } from '@/lib/utils';
 import type { User, Client, Category, AuditLog, Team, Entity, Role, SystemLog } from '@/types';
 
-type AdminTab = 'users' | 'clients' | 'categories' | 'teams' | 'entities' | 'audit' | 'logs';
+type AdminTab = 'users' | 'clients' | 'categories' | 'teams' | 'entities' | 'audit' | 'logs' | 'settings' | 'workflow';
 
 const ROLE_KEYS: Record<string, string> = {
   SUPER_ADMIN: 'admin.roles.superAdmin',
@@ -63,7 +67,13 @@ export default function AdminPage() {
     { key: 'teams', label: t('admin.tabs.teams'), icon: <Users2 className="h-4 w-4" /> },
     ...(isSuperAdmin ? [{ key: 'entities' as const, label: t('admin.tabs.entities'), icon: <Building2 className="h-4 w-4" /> }] : []),
     { key: 'audit', label: t('admin.tabs.audit'), icon: <ScrollText className="h-4 w-4" /> },
-    ...(isSuperAdmin ? [{ key: 'logs' as const, label: t('admin.tabs.logs'), icon: <Terminal className="h-4 w-4" /> }] : []),
+    ...(isSuperAdmin
+      ? [
+          { key: 'workflow' as const, label: t('admin.tabs.workflow'), icon: <GitBranch className="h-4 w-4" /> },
+          { key: 'settings' as const, label: t('admin.tabs.settings'), icon: <SettingsIcon className="h-4 w-4" /> },
+          { key: 'logs' as const, label: t('admin.tabs.logs'), icon: <Terminal className="h-4 w-4" /> },
+        ]
+      : []),
   ];
 
   return (
@@ -105,6 +115,8 @@ export default function AdminPage() {
       )}
       {activeTab === 'entities' && <EntitiesTab />}
       {activeTab === 'audit' && <AuditLogTab />}
+      {activeTab === 'workflow' && <WorkflowTab />}
+      {activeTab === 'settings' && <SettingsTab />}
       {activeTab === 'logs' && <SystemLogsTab />}
     </div>
   );
@@ -767,6 +779,7 @@ function CategoriesTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
   const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [editName, setEditName] = useState('');
   const [editNameEn, setEditNameEn] = useState('');
+  const [fieldsCategory, setFieldsCategory] = useState<Category | null>(null);
 
   const fetchCategories = useCallback(async () => {
     setLoading(true);
@@ -840,6 +853,9 @@ function CategoriesTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
               <div className="flex gap-1">
                 <Button variant="ghost" size="sm" onClick={() => { setEditCategory(row); setEditName(row.name); setEditNameEn(row.nameEn ?? ''); }}>
                   <Edit2 className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="sm" title={t('fields.manage')} onClick={() => setFieldsCategory(row)}>
+                  <ListPlus className="h-3.5 w-3.5" />
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => handleToggleActive(row)}>
                   <Badge variant={row.isActive ? 'neutral' : 'success'} className="text-xs cursor-pointer">
@@ -943,6 +959,14 @@ function CategoriesTab({ isSuperAdmin }: { isSuperAdmin: boolean }) {
           </div>
         </div>
       </Modal>
+
+      {/* Custom fields (form builder) per category */}
+      <CategoryFieldsModal
+        categoryId={fieldsCategory?.id ?? ''}
+        categoryName={fieldsCategory ? localName(fieldsCategory, i18n.language) : ''}
+        open={!!fieldsCategory}
+        onClose={() => setFieldsCategory(null)}
+      />
     </Card>
   );
 }

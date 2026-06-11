@@ -1,5 +1,6 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { config } from "../config/env.js";
+import { getSettings } from "./settings.service.js";
 
 let transporter: Transporter | null = null;
 let logged = false;
@@ -77,15 +78,16 @@ interface NotifyArgs {
  * status changes, SLA warnings, and escalations.
  */
 export async function sendNotificationEmail(args: NotifyArgs): Promise<void> {
+  const { branding } = await getSettings();
   const url = ticketUrl(args.ticketId);
-  const text = `${args.headline}\n\n${args.body}\n\nTicket ${args.ticketDisplayId}: ${url}\n\n— Wahid Portal`;
+  const text = `${args.headline}\n\n${args.body}\n\nTicket ${args.ticketDisplayId}: ${url}\n\n${branding.emailSignature}`;
   const html = `<!DOCTYPE html><html><body style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#222;max-width:560px;margin:0 auto;padding:24px;">
     <p style="font-size:18px;font-weight:600;margin:0 0 8px;">${escapeHtml(args.headline)}</p>
     <p style="margin:0 0 20px;color:#444;line-height:1.5;">${escapeHtml(args.body)}</p>
     <p style="margin:0 0 24px;">
-      <a href="${url}" style="display:inline-block;background:#0d6efd;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:500;">Open ticket ${escapeHtml(args.ticketDisplayId)}</a>
+      <a href="${url}" style="display:inline-block;background:${escapeHtml(branding.emailButtonColor)};color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:500;">Open ticket ${escapeHtml(args.ticketDisplayId)}</a>
     </p>
-    <p style="font-size:12px;color:#888;margin:0;">Hi ${escapeHtml(args.toName)} — this is an automated message from the Wahid Portal.</p>
+    <p style="font-size:12px;color:#888;margin:0;">Hi ${escapeHtml(args.toName)} — this is an automated message from ${escapeHtml(branding.fullNameEn)}.</p>
   </body></html>`;
   await sendEmail({ to: args.toEmail, subject: args.subject, text, html });
 }

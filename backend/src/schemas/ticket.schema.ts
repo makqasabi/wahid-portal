@@ -2,6 +2,8 @@ import { z } from "zod";
 
 const uuidString = z.string().uuid();
 
+// progress/priority are dynamic (TicketStatus/TicketPriority tables) — the
+// route validates keys against the workflow service at runtime, not here.
 export const createTicketSchema = z.object({
   submittingTeamId: uuidString,
   categoryId: uuidString,
@@ -12,11 +14,13 @@ export const createTicketSchema = z.object({
   dueDate: z.string().optional().nullable(),
   ownerEntityId: uuidString,
   ownerTeamId: uuidString,
-  priority: z.enum(["CRITICAL", "HIGH", "MEDIUM", "LOW"]).default("MEDIUM"),
+  priority: z.string().max(50).optional(),
+  // Admin-defined per-category fields: { [fieldId]: value }
+  customFields: z.record(z.string().uuid(), z.string().max(2000)).optional(),
 });
 
 export const updateTicketSchema = createTicketSchema.partial().extend({
-  progress: z.enum(["IN_PROGRESS", "DELAYED", "COMPLETED", "ON_HOLD", "DEPENDENT"]).optional(),
+  progress: z.string().max(50).optional(),
   closureDate: z.string().optional().nullable(),
 });
 

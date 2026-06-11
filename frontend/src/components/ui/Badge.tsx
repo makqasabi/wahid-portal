@@ -6,6 +6,8 @@ export interface BadgeProps {
   variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'brand';
   dot?: boolean;
   className?: string;
+  /** Admin-defined hex color (dynamic workflow) — overrides variant styling. */
+  colorHex?: string;
 }
 
 const variantClasses: Record<string, string> = {
@@ -35,7 +37,31 @@ const dotClasses: Record<string, string> = {
   neutral: 'bg-gray-400',
 };
 
-export function Badge({ children, variant = 'default', dot = false, className }: BadgeProps) {
+export function Badge({ children, variant = 'default', dot = false, className, colorHex }: BadgeProps) {
+  if (colorHex) {
+    // Hex-driven (dynamic workflow): tinted background + colored text/ring/dot
+    return (
+      <span
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset',
+          className,
+        )}
+        style={{
+          backgroundColor: `${colorHex}1a`,
+          color: colorHex,
+          boxShadow: `inset 0 0 0 1px ${colorHex}33`,
+        }}
+      >
+        {dot && (
+          <span
+            className="h-1.5 w-1.5 rounded-full"
+            style={{ backgroundColor: colorHex }}
+          />
+        )}
+        {children}
+      </span>
+    );
+  }
   return (
     <span
       className={cn(

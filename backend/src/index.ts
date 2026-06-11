@@ -28,6 +28,7 @@ import commentRoutes from "./routes/comment.routes.js";
 import userRoutes from "./routes/user.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
 import adminRoutes from "./routes/admin.routes.js";
+import adminConfigRoutes from "./routes/adminConfig.routes.js";
 import exportRoutes from "./routes/export.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
 import { notificationStreamHandler } from "./routes/notificationStream.js";
@@ -70,6 +71,7 @@ app.use("/api/comments", commentRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/admin", adminConfigRoutes);
 app.use("/api/export", exportRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/attachments", attachmentRoutes);
@@ -102,10 +104,18 @@ app.use((err: Error, req: express.Request, res: express.Response, _next: express
 import { scheduleSlaChecker } from "./jobs/slaChecker.js";
 import { scheduleWeeklyReport } from "./jobs/weeklyReport.js";
 import { startImapPoller } from "./services/imap.service.js";
+import { seedWorkflowIfEmpty } from "./services/workflow.service.js";
+import { getSettings } from "./services/settings.service.js";
 
-scheduleSlaChecker();
-scheduleWeeklyReport();
-startImapPoller();
+// Seed the dynamic workflow tables and warm the settings cache, then start
+// the cron jobs (their schedules come from settings).
+void (async () => {
+  await seedWorkflowIfEmpty();
+  await getSettings();
+  await scheduleSlaChecker();
+  await scheduleWeeklyReport();
+  startImapPoller();
+})();
 
 // Prune old logs once shortly after boot (when the store is ready) and daily.
 function runLogPrune() {

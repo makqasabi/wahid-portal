@@ -1,4 +1,5 @@
 import { config } from "../config/env.js";
+import { toggleEnabled } from "./settings.service.js";
 
 /**
  * WhatsApp Cloud API sender.
@@ -119,7 +120,7 @@ export async function notifyWhatsApp(
   toPhone: string | null | undefined,
   message: string,
 ): Promise<boolean> {
-  if (!config.WHATSAPP_ENABLED || !toPhone) return false;
+  if (!(await toggleEnabled("whatsapp", config.WHATSAPP_ENABLED)) || !toPhone) return false;
   if (config.WHATSAPP_TEMPLATE_NAME) {
     return sendTemplate(
       toPhone,

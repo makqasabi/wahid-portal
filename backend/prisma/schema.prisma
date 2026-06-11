@@ -102,6 +102,7 @@ model Category {
   isActive Boolean @default(true)
 
   tickets Ticket[]
+  fields  CategoryField[]
 }
 
 model Ticket {
@@ -142,6 +143,7 @@ model Ticket {
   attachments   Attachment[]
   auditLogs     AuditLog[]
   notifications Notification[]
+  fieldValues   TicketFieldValue[]
 }
 
 model Comment {
@@ -230,4 +232,75 @@ model ShareLink {
   maxViews    Int?
   viewCount   Int      @default(0)
   createdAt   DateTime @default(now())
+}
+
+// ── Runtime configuration (admin-customizable, no redeploy) ──
+
+// One row per setting key; value is JSON-encoded. Defaults live in code
+// (settings.service.ts) — a row only exists once an admin overrides it.
+model AppSetting {
+  key         String   @id
+  value       String
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+// Fully dynamic ticket workflow. `key` is the value stored on Ticket.progress.
+// Semantic flags tell the SLA engine / dashboards how to treat each status,
+// so the engine never references a specific status by name.
+model TicketStatus {
+  id            String  @id @default(uuid())
+  key           String  @unique
+  name          String // Arabic label
+  nameEn        String?
+  color         String  @default("#64748b")
+  sortOrder     Int     @default(0)
+  isActive      Boolean @default(true)
+  isDefault     Boolean @default(false) // initial status for new tickets
+  isClosed      Boolean @default(false) // terminal: sets closureDate + SLA variance
+  pausesSla     Boolean @default(false) // excluded from overdue/auto-delay (ON_HOLD-like)
+  isOverdueFlag Boolean @default(false) // the status overdue tickets are auto-moved to
+  transitionsTo String  @default("[]") // JSON array of status keys reachable from here
+}
+
+model TicketPriority {
+  id        String  @id @default(uuid())
+  key       String  @unique
+  name      String
+  nameEn    String?
+  color     String  @default("#64748b")
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
+  isDefault Boolean @default(false)
+}
+
+// Admin-defined extra ticket fields, per category (form builder).
+model CategoryField {
+  id         String  @id @default(uuid())
+  categoryId String
+  key        String
+  label      String // Arabic label
+  labelEn    String?
+  type       String  @default("text") // text | textarea | number | date | select
+  options    String  @default("[]") // JSON array of strings (select only)
+  required   Boolean @default(false)
+  sortOrder  Int     @default(0)
+  isActive   Boolean @default(true)
+
+  category Category           @relation(fields: [categoryId], references: [id])
+  values   TicketFieldValue[]
+
+  @@unique([categoryId, key])
+}
+
+model TicketFieldValue {
+  id       String @id @default(uuid())
+  ticketId String
+  fieldId  String
+  value    String
+
+  ticket Ticket        @relation(fields: [ticketId], references: [id])
+  field  CategoryField @relation(fields: [fieldId], references: [id])
+
+  @@unique([ticketId, fieldId])
 }

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { cn, isMeenaEntity, localName } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { useBranding } from '@/hooks/useBranding';
 import { authApi } from '@/api/client';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
@@ -47,6 +48,7 @@ const navItems: NavItem[] = [
 export function Sidebar() {
   const { t, i18n } = useTranslation();
   const { user, logout, hasMinRole } = useAuth();
+  const branding = useBranding();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => {
     try {
@@ -156,12 +158,16 @@ export function Sidebar() {
               : 'bg-gradient-to-br from-twn-500 to-twn-700 ring-twn-600/20',
           )}
         >
-          <Layers className="h-5 w-5" />
+          {branding.logoUrl ? (
+            <img src={branding.logoUrl} alt="" className="h-full w-full rounded-xl object-contain p-1" />
+          ) : (
+            <Layers className="h-5 w-5" />
+          )}
         </div>
         {!collapsed && (
           <div className="flex flex-col leading-tight">
-            <span className="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50">واحد</span>
-            <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">Wahid</span>
+            <span className="text-lg font-bold tracking-tight text-gray-900 dark:text-gray-50">{branding.portalNameAr}</span>
+            <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-gray-400 dark:text-gray-500">{branding.portalNameEn}</span>
           </div>
         )}
       </div>

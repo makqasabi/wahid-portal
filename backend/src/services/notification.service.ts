@@ -3,29 +3,11 @@ import type { NotificationType } from "@prisma/client";
 import { sendNotificationEmail } from "./mail.service.js";
 import { notifyWhatsApp } from "./whatsapp.service.js";
 import { publish, type BroadcastNotification } from "./notification.bus.js";
+import { getTemplate, renderTemplate } from "./settings.service.js";
 
-function emailSubject(type: NotificationType, displayId: string): string {
-  switch (type) {
-    case "ASSIGNED":       return `You were assigned to ticket ${displayId}`;
-    case "COMMENT_ADDED":  return `New comment on ticket ${displayId}`;
-    case "STATUS_CHANGED": return `Ticket ${displayId} status changed`;
-    case "SLA_WARNING":    return `Ticket ${displayId} is due soon`;
-    case "SLA_OVERDUE":    return `Ticket ${displayId} is overdue`;
-    case "ESCALATION":     return `Escalation: ticket ${displayId}`;
-    default: return `Update on ticket ${displayId}`;
-  }
-}
-
-function emailHeadline(type: NotificationType, displayId: string): string {
-  switch (type) {
-    case "ASSIGNED":       return `You're now the owner of ticket ${displayId}`;
-    case "COMMENT_ADDED":  return `Someone commented on ticket ${displayId}`;
-    case "STATUS_CHANGED": return `Status changed on ticket ${displayId}`;
-    case "SLA_WARNING":    return `Ticket ${displayId} is approaching its due date`;
-    case "SLA_OVERDUE":    return `Ticket ${displayId} has missed its due date`;
-    case "ESCALATION":     return `Escalation — ticket ${displayId}`;
-    default: return `Update on ticket ${displayId}`;
-  }
+async function emailSubject(type: NotificationType, displayId: string): Promise<string> {
+  const tpl = await getTemplate(type);
+  return renderTemplate(tpl.subject, { ticketId: displayId });
 }
 
 /**
@@ -51,20 +33,22 @@ async function sendForNotification(
     ]);
     if (!user || !user.isActive || !ticket) return false;
 
-    const headline = emailHeadline(type, ticket.displayId);
+    // The message itself is rendered from the admin-editable template by the
+    // caller — it doubles as the email headline and WhatsApp text.
+    const subject = await emailSubject(type, ticket.displayId);
 
     await Promise.all([
       sendNotificationEmail({
         toEmail: user.email,
         toName: user.fullName,
-        subject: emailSubject(type, ticket.displayId),
-        headline,
-        body: message,
+        subject,
+        headline: message,
+        body: "",
         ticketDisplayId: ticket.displayId,
         ticketId: ticket.id,
       }),
       // Fire WhatsApp alongside email — no-ops if disabled or no phone on file
-      notifyWhatsApp(user.phone, `${headline}\n\n${message}`),
+      notifyWhatsApp(user.phone, message),
     ]);
     return true;
   } catch (err) {

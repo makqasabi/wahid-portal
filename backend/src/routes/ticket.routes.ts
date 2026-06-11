@@ -16,6 +16,15 @@ import {
   notifyTicketParticipants,
 } from "../services/notification.service.js";
 import { ticketVisibilityWhere, canViewTicket } from "../utils/visibility.js";
+import {
+  defaultStatusKey,
+  defaultPriorityKey,
+  isValidStatusKey,
+  isValidPriorityKey,
+  isClosedStatus,
+  canTransition,
+} from "../services/workflow.service.js";
+import { getTemplate, renderTemplate } from "../services/settings.service.js";
 import type { Prisma } from "@prisma/client";
 
 const router = Router();
@@ -26,13 +35,57 @@ function visibilityFilter(req: ScopedRequest): Prisma.TicketWhereInput {
   return ticketVisibilityWhere(req.user!);
 }
 
-const VALID_TRANSITIONS: Record<string, string[]> = {
-  IN_PROGRESS: ["COMPLETED", "ON_HOLD", "DEPENDENT"],
-  DELAYED: ["COMPLETED", "ON_HOLD", "IN_PROGRESS"],
-  ON_HOLD: ["IN_PROGRESS"],
-  DEPENDENT: ["IN_PROGRESS"],
-  COMPLETED: ["IN_PROGRESS"], // reopen
-};
+/**
+ * Validate submitted custom-field values against the category's field
+ * definitions. Returns rows ready for TicketFieldValue writes, or an error
+ * string. `requireRequired` is true on create (all required fields must be
+ * present) and false on partial update.
+ */
+async function prepareFieldValues(
+  categoryId: string,
+  customFields: Record<string, string> | undefined,
+  requireRequired: boolean,
+): Promise<{ rows: { fieldId: string; value: string }[] } | { error: string }> {
+  const defs = await prisma.categoryField.findMany({
+    where: { categoryId, isActive: true },
+  });
+  const submitted = customFields ?? {};
+
+  for (const id of Object.keys(submitted)) {
+    if (!defs.some((d) => d.id === id)) {
+      return { error: "Unknown custom field for this category" };
+    }
+  }
+
+  const rows: { fieldId: string; value: string }[] = [];
+  for (const def of defs) {
+    const raw = submitted[def.id];
+    if (raw === undefined || raw === "") {
+      if (def.required && requireRequired) {
+        return { error: `Field '${def.labelEn || def.label}' is required` };
+      }
+      continue;
+    }
+    if (def.type === "number" && Number.isNaN(Number(raw))) {
+      return { error: `Field '${def.labelEn || def.label}' must be a number` };
+    }
+    if (def.type === "date" && Number.isNaN(Date.parse(raw))) {
+      return { error: `Field '${def.labelEn || def.label}' must be a valid date` };
+    }
+    if (def.type === "select") {
+      try {
+        const opts: string[] = JSON.parse(def.options);
+        if (!opts.includes(raw)) {
+          return { error: `Invalid option for field '${def.labelEn || def.label}'` };
+        }
+      } catch {
+        /* unparseable options → accept any value */
+      }
+    }
+    rows.push({ fieldId: def.id, value: raw });
+  }
+  return { rows };
+}
 
 // ── GET / — List tickets ────────────────────────────────────
 
@@ -150,6 +203,7 @@ router.get("/:id", async (req: ScopedRequest, res: Response) => {
         ownerEntity: true,
         ownerTeam: true,
         attachments: true,
+        fieldValues: { include: { field: true } },
         auditLogs: {
           orderBy: { createdAt: "desc" },
           take: 50,
@@ -284,6 +338,21 @@ router.post("/", validateBody(createTicketSchema), async (req: ScopedRequest, re
       return;
     }
 
+    // Dynamic workflow: validate priority key, resolve defaults
+    const priority = data.priority ?? (await defaultPriorityKey());
+    if (!(await isValidPriorityKey(priority))) {
+      res.status(400).json({ error: "Invalid priority" });
+      return;
+    }
+    const initialStatus = await defaultStatusKey();
+
+    // Custom fields for the chosen category
+    const prepared = await prepareFieldValues(data.categoryId, data.customFields, true);
+    if ("error" in prepared) {
+      res.status(400).json({ error: prepared.error });
+      return;
+    }
+
     const displayId = await generateDisplayId();
 
     // submittedById is ALWAYS the authenticated user — no impersonation possible
@@ -300,9 +369,12 @@ router.post("/", validateBody(createTicketSchema), async (req: ScopedRequest, re
         dueDate: data.dueDate ? new Date(data.dueDate) : null,
         ownerEntityId: data.ownerEntityId,
         ownerTeamId: data.ownerTeamId,
-        priority: data.priority ?? "MEDIUM",
-        progress: "IN_PROGRESS",
+        priority,
+        progress: initialStatus,
         submittedById: userId,
+        fieldValues: prepared.rows.length
+          ? { create: prepared.rows }
+          : undefined,
       },
       include: {
         submittingTeam: true,
@@ -325,12 +397,13 @@ router.post("/", validateBody(createTicketSchema), async (req: ScopedRequest, re
       },
     });
 
-    // Notification for owner
+    // Notification for owner (admin-editable template)
+    const assignedTpl = await getTemplate("ASSIGNED");
     await createNotification(
       ticket.ownerId,
       ticket.id,
       "ASSIGNED",
-      `You have been assigned ticket ${displayId}`,
+      renderTemplate(assignedTpl.body, { ticketId: displayId }),
     );
 
     res.status(201).json(ticket);
@@ -388,22 +461,36 @@ router.patch("/:id", validateBody(updateTicketSchema), async (req: ScopedRequest
       }
     }
 
-    // ── Progress transition validation ──
+    // ── Progress transition validation (dynamic workflow) ──
+    const wasClosed = await isClosedStatus(existing.progress);
+    let willBeClosed = wasClosed;
     if (updates.progress && updates.progress !== existing.progress) {
-      const allowed = VALID_TRANSITIONS[existing.progress] ?? [];
-      if (!allowed.includes(updates.progress)) {
+      if (!(await isValidStatusKey(updates.progress))) {
+        res.status(400).json({ error: "Invalid status" });
+        return;
+      }
+      if (!(await canTransition(existing.progress, updates.progress))) {
         res.status(400).json({
           error: `Cannot transition from ${existing.progress} to ${updates.progress}`,
         });
         return;
       }
+      willBeClosed = await isClosedStatus(updates.progress);
 
-      // Reopen check: only submitter or admin can reopen
-      if (existing.progress === "COMPLETED" && updates.progress === "IN_PROGRESS") {
+      // Reopen check: only submitter or admin can reopen a closed ticket
+      if (wasClosed && !willBeClosed) {
         if (!isSubmitter && !isEntityAdmin && !isSuperAdmin) {
           res.status(403).json({ error: "Only the submitter or admin can reopen a completed ticket" });
           return;
         }
+      }
+    }
+
+    // ── Priority validation (dynamic workflow) ──
+    if (updates.priority && updates.priority !== existing.priority) {
+      if (!(await isValidPriorityKey(updates.priority))) {
+        res.status(400).json({ error: "Invalid priority" });
+        return;
       }
     }
 
@@ -490,8 +577,8 @@ router.patch("/:id", validateBody(updateTicketSchema), async (req: ScopedRequest
       }
     }
 
-    // ── Completion logic ──
-    if (updates.progress === "COMPLETED" && existing.progress !== "COMPLETED") {
+    // ── Completion logic: moving INTO a closed status ──
+    if (updates.progress && !wasClosed && willBeClosed) {
       if (!updateData.closureDate) {
         updateData.closureDate = new Date();
       }
@@ -500,10 +587,27 @@ router.patch("/:id", validateBody(updateTicketSchema), async (req: ScopedRequest
       updateData.slaVarianceDays = variance;
     }
 
-    // ── Reopen logic ──
-    if (updates.progress === "IN_PROGRESS" && existing.progress === "COMPLETED") {
+    // ── Reopen logic: leaving a closed status ──
+    if (updates.progress && wasClosed && !willBeClosed) {
       updateData.closureDate = null;
       updateData.slaVarianceDays = null;
+    }
+
+    // ── Custom field values (validate against the ticket's category) ──
+    if (updates.customFields && Object.keys(updates.customFields).length > 0) {
+      const categoryId = (updates.categoryId as string) ?? existing.categoryId;
+      const prepared = await prepareFieldValues(categoryId, updates.customFields, false);
+      if ("error" in prepared) {
+        res.status(400).json({ error: prepared.error });
+        return;
+      }
+      for (const row of prepared.rows) {
+        await prisma.ticketFieldValue.upsert({
+          where: { ticketId_fieldId: { ticketId, fieldId: row.fieldId } },
+          create: { ticketId, fieldId: row.fieldId, value: row.value },
+          update: { value: row.value },
+        });
+      }
     }
 
     const updated = await prisma.ticket.update({
@@ -526,13 +630,18 @@ router.patch("/:id", validateBody(updateTicketSchema), async (req: ScopedRequest
       await prisma.auditLog.createMany({ data: auditEntries });
     }
 
-    // Notifications on status change
+    // Notifications on status change (admin-editable template)
     if (updates.progress && updates.progress !== existing.progress) {
+      const tpl = await getTemplate("STATUS_CHANGED");
       await notifyTicketParticipants(
         ticketId,
         userId,
         "STATUS_CHANGED",
-        `Ticket ${existing.displayId} status changed from ${existing.progress} to ${updates.progress}`,
+        renderTemplate(tpl.body, {
+          ticketId: existing.displayId,
+          from: existing.progress,
+          to: updates.progress,
+        }),
       );
     }
 

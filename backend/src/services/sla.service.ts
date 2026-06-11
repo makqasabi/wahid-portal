@@ -1,5 +1,6 @@
 import prisma from "../config/prisma.js";
 import { calcCalendarDays } from "../utils/businessDays.js";
+import { overdueStatusKey, openStatusKeys } from "./workflow.service.js";
 
 /**
  * Calculate SLA variance in calendar days.
@@ -16,18 +17,25 @@ export function calculateSlaVariance(
 }
 
 /**
- * Find all tickets past their due date that are still IN_PROGRESS
- * and mark them as DELAYED. Creates audit log entries.
+ * Find all tickets past their due date that are still in an open (non-closed,
+ * non-SLA-paused) status and move them to the workflow's overdue status.
+ * Status semantics come from the dynamic workflow tables. Creates audit logs.
  */
 export async function checkAndUpdateDelayed(): Promise<number> {
   const now = new Date();
+  const [overdueKey, openKeys] = await Promise.all([
+    overdueStatusKey(),
+    openStatusKeys(),
+  ]);
+  // No status flagged as "overdue" → the sweep is effectively disabled.
+  if (!overdueKey) return 0;
 
   const overdueTickets = await prisma.ticket.findMany({
     where: {
       dueDate: { lt: now },
-      progress: { notIn: ["COMPLETED", "ON_HOLD", "DEPENDENT", "DELAYED"] },
+      progress: { in: openKeys.filter((k) => k !== overdueKey) },
     },
-    select: { id: true, ownerId: true },
+    select: { id: true, ownerId: true, progress: true },
   });
 
   if (overdueTickets.length === 0) return 0;
@@ -37,7 +45,7 @@ export async function checkAndUpdateDelayed(): Promise<number> {
     where: {
       id: { in: overdueTickets.map((t) => t.id) },
     },
-    data: { progress: "DELAYED" },
+    data: { progress: overdueKey },
   });
 
   // Create audit logs for each
@@ -47,8 +55,8 @@ export async function checkAndUpdateDelayed(): Promise<number> {
       userId: t.ownerId, // attribute to the owner
       action: "STATUS_CHANGED",
       fieldName: "progress",
-      oldValue: "IN_PROGRESS",
-      newValue: "DELAYED",
+      oldValue: t.progress,
+      newValue: overdueKey,
     })),
   });
 

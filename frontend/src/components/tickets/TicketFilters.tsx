@@ -8,25 +8,22 @@ import { referenceApi } from '@/api/client';
 import { Input } from '@/components/ui/Input';
 import { Select, type SelectOption } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
-import type { Progress, Priority, Client, Category, User, Entity } from '@/types';
-
-const PROGRESS_KEYS: { value: Progress; key: string }[] = [
-  { value: 'IN_PROGRESS', key: 'inProgress' },
-  { value: 'DELAYED', key: 'delayed' },
-  { value: 'COMPLETED', key: 'completed' },
-  { value: 'ON_HOLD', key: 'onHold' },
-  { value: 'DEPENDENT', key: 'dependent' },
-];
-
-const PRIORITY_KEYS: { value: Priority; key: string }[] = [
-  { value: 'CRITICAL', key: 'critical' },
-  { value: 'HIGH', key: 'high' },
-  { value: 'MEDIUM', key: 'medium' },
-  { value: 'LOW', key: 'low' },
-];
+import { useWorkflow, workflowLabel } from '@/hooks/useWorkflow';
+import type { Client, Category, User, Entity } from '@/types';
 
 export function TicketFilters() {
   const { t, i18n } = useTranslation();
+  const workflow = useWorkflow();
+
+  // Dynamic (admin-defined) status/priority chips
+  const PROGRESS_KEYS = workflow.statuses.map((s) => ({
+    value: s.key,
+    label: workflowLabel(s, i18n.language, s.key),
+  }));
+  const PRIORITY_KEYS = workflow.priorities.map((p) => ({
+    value: p.key,
+    label: workflowLabel(p, i18n.language, p.key),
+  }));
   const [searchParams, setSearchParams] = useSearchParams();
   const filters = useFilterStore();
   const [expanded, setExpanded] = useState(false);
@@ -200,7 +197,7 @@ export function TicketFilters() {
                       checked={filters.progress.includes(opt.value)}
                       onChange={() => toggleArrayFilter('progress', opt.value)}
                     />
-                    {t(opt.key)}
+                    {opt.label}
                   </label>
                 ))}
               </div>
@@ -228,7 +225,7 @@ export function TicketFilters() {
                       checked={filters.priority.includes(opt.value)}
                       onChange={() => toggleArrayFilter('priority', opt.value)}
                     />
-                    {t(opt.key)}
+                    {opt.label}
                   </label>
                 ))}
               </div>

@@ -3,6 +3,7 @@ import { simpleParser } from "mailparser";
 import { config } from "../config/env.js";
 import prisma from "../config/prisma.js";
 import { notifyTicketParticipants } from "./notification.service.js";
+import { toggleEnabled } from "./settings.service.js";
 
 /**
  * Inbound email poller.
@@ -61,6 +62,8 @@ async function handleMessage(source: Buffer): Promise<boolean> {
 
 async function pollOnce(): Promise<void> {
   if (polling) return;
+  // Admin toggle can disable polling at runtime without a restart
+  if (!(await toggleEnabled("imap", config.IMAP_ENABLED))) return;
   polling = true;
   const client = new ImapFlow({
     host: config.IMAP_HOST,
@@ -107,12 +110,16 @@ async function pollOnce(): Promise<void> {
 }
 
 export function startImapPoller(): void {
-  if (!config.IMAP_ENABLED) {
+  // Credentials are env-only; without them polling can never run.
+  if (!config.IMAP_HOST || !config.IMAP_USER || !config.IMAP_PASS) {
     console.log("[IMAP] inbound polling disabled (not configured)");
     return;
   }
+  // The interval always runs once credentials exist; each tick consults the
+  // admin toggle (UI override → env fallback), so it can be switched on/off
+  // at runtime without a restart.
   console.log(
-    `[IMAP] polling ${config.IMAP_USER}@${config.IMAP_HOST}:${config.IMAP_PORT} every ${config.IMAP_POLL_SECONDS}s`,
+    `[IMAP] poller armed for ${config.IMAP_USER}@${config.IMAP_HOST}:${config.IMAP_PORT} every ${config.IMAP_POLL_SECONDS}s`,
   );
   void pollOnce();
   setInterval(() => void pollOnce(), config.IMAP_POLL_SECONDS * 1000).unref();

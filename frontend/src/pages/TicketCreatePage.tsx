@@ -13,7 +13,8 @@ import { Combobox } from '@/components/ui/Combobox';
 import { Badge } from '@/components/ui/Badge';
 import { Spinner } from '@/components/ui/Spinner';
 import { isMeenaEntity, localName, userName } from '@/lib/utils';
-import type { User, Client, Category, Team, Priority, Ticket } from '@/types';
+import { useWorkflow, workflowLabel } from '@/hooks/useWorkflow';
+import type { User, Client, Category, Team, Priority, Ticket, CategoryFieldDef } from '@/types';
 
 interface FormData {
   actionItem: string;
@@ -28,22 +29,19 @@ interface FormData {
   priority: Priority | '';
 }
 
-// Priority options are built inside the component to access t()
-
-
 export default function TicketCreatePage() {
   const { t, i18n } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, hasMinRole } = useAuth();
   const isEdit = !!id;
+  const workflow = useWorkflow();
 
-  const PRIORITY_OPTIONS: SelectOption[] = [
-    { value: 'CRITICAL', label: t('critical') },
-    { value: 'HIGH', label: t('high') },
-    { value: 'MEDIUM', label: t('medium') },
-    { value: 'LOW', label: t('low') },
-  ];
+  // Dynamic (admin-defined) priorities
+  const PRIORITY_OPTIONS: SelectOption[] = workflow.priorities.map((p) => ({
+    value: p.key,
+    label: workflowLabel(p, i18n.language, p.key),
+  }));
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -55,6 +53,10 @@ export default function TicketCreatePage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [users, setUsers] = useState<User[]>([]);
 
+  // Admin-defined custom fields for the selected category
+  const [categoryFields, setCategoryFields] = useState<CategoryFieldDef[]>([]);
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
+
   const [form, setForm] = useState<FormData>({
     actionItem: '',
     categoryId: '',
@@ -65,8 +67,20 @@ export default function TicketCreatePage() {
     supportId: '',
     submittingTeamId: user?.teamId ?? '',
     dueDate: '',
-    priority: 'MEDIUM',
+    priority: workflow.defaultPriority?.key ?? 'MEDIUM',
   });
+
+  // Load the category's custom fields whenever the category changes
+  useEffect(() => {
+    if (!form.categoryId) {
+      setCategoryFields([]);
+      return;
+    }
+    referenceApi
+      .getCategoryFields(form.categoryId)
+      .then(setCategoryFields)
+      .catch(() => setCategoryFields([]));
+  }, [form.categoryId]);
 
   // Fetch reference data on mount
   useEffect(() => {
@@ -114,6 +128,12 @@ export default function TicketCreatePage() {
           dueDate: ticket.dueDate ? ticket.dueDate.split('T')[0] : '',
           priority: ticket.priority,
         });
+        // Prefill saved custom-field values
+        if (ticket.fieldValues?.length) {
+          setFieldValues(
+            Object.fromEntries(ticket.fieldValues.map((fv) => [fv.fieldId, fv.value])),
+          );
+        }
       })
       .catch(() => {
         toast.error(t('failedLoadTicket'));
@@ -161,6 +181,11 @@ export default function TicketCreatePage() {
     if (!form.clientId) newErrors.clientId = t('clientRequired');
     if (!form.ownerId) newErrors.ownerId = t('ownerRequired');
     if (!form.ownerTeamId) newErrors.ownerTeamId = t('ownerTeamRequired');
+    for (const f of categoryFields) {
+      if (f.required && !(fieldValues[f.id] ?? '').trim()) {
+        newErrors[`cf_${f.id}`] = t('fieldRequired');
+      }
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -183,6 +208,13 @@ export default function TicketCreatePage() {
       };
       if (form.dueDate) payload.dueDate = form.dueDate;
       if (form.supportId) payload.supportId = form.supportId;
+      // Custom field values (only non-empty ones)
+      const cf = Object.fromEntries(
+        Object.entries(fieldValues).filter(
+          ([fid, v]) => v !== '' && categoryFields.some((f) => f.id === fid),
+        ),
+      );
+      if (Object.keys(cf).length > 0) payload.customFields = cf;
 
       if (isEdit) {
         await ticketsApi.update(id!, payload);
@@ -396,6 +428,75 @@ export default function TicketCreatePage() {
           </div>
 
         </Card>
+
+        {/* Admin-defined custom fields for the selected category */}
+        {categoryFields.length > 0 && (
+          <Card title={t('additionalDetails')}>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {categoryFields.map((f) => {
+                const label = i18n.language.startsWith('ar')
+                  ? f.label
+                  : f.labelEn || f.label;
+                const value = fieldValues[f.id] ?? '';
+                const error = errors[`cf_${f.id}`];
+                const setValue = (v: string) => {
+                  setFieldValues((prev) => ({ ...prev, [f.id]: v }));
+                  if (error) {
+                    setErrors((prev) => {
+                      const next = { ...prev };
+                      delete next[`cf_${f.id}`];
+                      return next;
+                    });
+                  }
+                };
+                if (f.type === 'select') {
+                  return (
+                    <Select
+                      key={f.id}
+                      label={`${label}${f.required ? ' *' : ''}`}
+                      placeholder={t('selectOption')}
+                      options={f.options.map((o) => ({ value: o, label: o }))}
+                      value={value}
+                      onChange={(e) => setValue(e.target.value)}
+                      error={error}
+                    />
+                  );
+                }
+                if (f.type === 'textarea') {
+                  return (
+                    <div key={f.id} className="sm:col-span-2">
+                      <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        {label}
+                        {f.required ? ' *' : ''}
+                      </label>
+                      <textarea
+                        value={value}
+                        onChange={(e) => setValue(e.target.value)}
+                        rows={3}
+                        className={`block w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-gray-900 shadow-sm transition-all placeholder:text-gray-400 focus:outline-none focus:ring-4 dark:bg-gray-900 dark:text-gray-100 ${
+                          error
+                            ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/15'
+                            : 'border-gray-300 hover:border-gray-400 focus:border-twn-500 focus:ring-twn-500/15 dark:border-gray-700 dark:hover:border-gray-600'
+                        }`}
+                      />
+                      {error && <p className="mt-1 text-xs text-rose-600">{error}</p>}
+                    </div>
+                  );
+                }
+                return (
+                  <Input
+                    key={f.id}
+                    label={`${label}${f.required ? ' *' : ''}`}
+                    type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : 'text'}
+                    value={value}
+                    onChange={(e) => setValue(e.target.value)}
+                    error={error}
+                  />
+                );
+              })}
+            </div>
+          </Card>
+        )}
 
         {/* Submit */}
         <div data-tour="create-submit" className="flex flex-col-reverse justify-end gap-3 sm:flex-row">
